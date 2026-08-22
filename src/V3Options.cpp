@@ -104,6 +104,37 @@ public:
     }
 
     void addLibExtV(const string& libext) { m_libExtVs.insert(libext); }
+    void addIncDirUserRecursive(const string& incdir) {
+        addIncDirUser(incdir);
+        addSubdirsRecursive(incdir);
+    }
+    void addSubdirsRecursive(const string& dir) {
+#ifdef _MSC_VER
+        try {
+            for (const auto& dirEntry : std::filesystem::recursive_directory_iterator(dir.c_str())) {
+                if (dirEntry.is_directory()) {
+                    addIncDirUser(dirEntry.path().string());
+                }
+            }
+        } catch (std::filesystem::filesystem_error const& ex) {
+            (void)ex;
+        }
+#else
+        if (DIR* const dirp = opendir(dir.c_str())) {
+            while (struct dirent* direntp = readdir(dirp)) {
+                const string name = direntp->d_name;
+                if (name == "." || name == "..") continue;
+                const string fullPath = V3Os::filenameJoin(dir, name);
+                struct stat sstat;
+                if (stat(fullPath.c_str(), &sstat) == 0 && S_ISDIR(sstat.st_mode)) {
+                    addIncDirUser(fullPath);
+                    addSubdirsRecursive(fullPath);
+                }
+            }
+            closedir(dirp);
+        }
+#endif
+    }
     V3OptionsImp() = default;
     ~V3OptionsImp() = default;
 };
@@ -285,6 +316,7 @@ void VTimescale::parseSlashed(FileLine* fl, const char* textp, VTimescale& unitr
 // V3Options class functions
 
 void V3Options::addIncDirUser(const string& incdir) { m_impp->addIncDirUser(incdir); }
+void V3Options::addIncDirUserRecursive(const string& incdir) { m_impp->addIncDirUserRecursive(incdir); }
 void V3Options::addIncDirFallback(const string& incdir) { m_impp->addIncDirFallback(incdir); }
 void V3Options::addLangExt(const string& langext, const V3LangCode& lc) {
     m_impp->addLangExt(langext, lc);
@@ -1985,6 +2017,10 @@ void V3Options::parseOptsList(FileLine* fl, const string& optdir, int argc,
 
     DECL_OPTION("-y", CbVal, [this, &optdir](const char* valp) {
         addIncDirUser(parseFileArg(optdir, string{valp}));
+    }).notForRerun();
+
+    DECL_OPTION("-yr", CbVal, [this, &optdir](const char* valp) {
+        addIncDirUserRecursive(parseFileArg(optdir, string{valp}));
     }).notForRerun();
 
     parser.finalize();

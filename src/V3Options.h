@@ -448,6 +448,7 @@ private:
     void addFuture0(const string& flag);
     void addFuture1(const string& flag);
     void addIncDirUser(const string& incdir);  // User requested
+    void addIncDirUserRecursive(const string& incdir);  // User requested, with subdirs
     void addIncDirFallback(const string& incdir);  // Low priority if not found otherwise
     void addParameter(const string& paramline, bool allowPlus);
     void addLangExt(const string& langext, const V3LangCode& lc);

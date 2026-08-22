@@ -15,6 +15,7 @@
 import argparse
 import os
 import re
+import subprocess
 import sys
 
 from datetime import datetime, timezone
@@ -25,7 +26,7 @@ def get_rev() -> str:
         # e.g. Ubuntu package build
         return os.environ['VERILATOR_SRC_VERSION']
 
-    data = os.popen('git describe --always').read()
+    data = subprocess.check_output(['git', 'describe', '--always'], encoding='utf-8', errors='replace')
 
     if 'SOURCE_DATE_EPOCH' in os.environ:
         # e.g. Package builds that don't set VERILATOR_SRC_VERSION
@@ -45,7 +46,7 @@ def get_rev() -> str:
         if m:
             result += "-" + m.group(1)
 
-    data = os.popen('git status').read()
+    data = subprocess.check_output(['git', 'status'], encoding='utf-8', errors='replace')
     if (re.search('Changed but not updated', data, flags=re.IGNORECASE)
             or re.search('Changes to be committed', data, flags=re.IGNORECASE)
             or re.search('Changes not staged', data, flags=re.IGNORECASE)):

@@ -1641,6 +1641,10 @@ void V3Options::parseOptsList(FileLine* fl, const string& optdir, int argc,
         validateIdentifier(fl, valp, "--lib-create");
         m_libCreate = valp;
     });
+    DECL_OPTION("-lint-fast", CbOnOff, [this](bool flag) {
+        m_lintFast = flag;
+        if (flag) m_lintOnly = true;
+    });
     DECL_OPTION("-lint-only", OnOff, &m_lintOnly);
     DECL_OPTION("-localize-max-size", Set, &m_localizeMaxSize);
 

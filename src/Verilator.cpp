@@ -119,10 +119,18 @@
 #include "V3WidthCommit.h"
 
 #include <ctime>
+#include <iomanip>
 
 VL_DEFINE_DEBUG_FUNCTIONS;
 
 V3Global v3Global;
+
+static void lintStagePrint(const char* namep, double seconds) {
+    if (!v3Global.opt.lintFast()) return;
+    std::cout << "- Verilator: Lint stage " << std::left << std::setw(10) << namep
+              << std::setprecision(3) << std::fixed << seconds << " s\n"
+              << std::flush;
+}
 
 static void reportStatsIfEnabled() {
     if (v3Global.opt.stats()) {
@@ -147,6 +155,8 @@ static void emitSerialized() VL_MT_DISABLED {
 static void process() {
     {
         const VlOs::DeltaWallTime elabWallTime{true};
+        VlOs::DeltaWallTime stageWallTime{true};
+        const bool doLintProfile = v3Global.opt.lintFast();
 
         // Sort modules by level so later algorithms don't need to care
         V3LinkLevel::modSortByLevel();
@@ -174,6 +184,11 @@ static void process() {
         V3LinkInc::linkIncrements(v3Global.rootp());
         V3Error::abortIfErrors();
 
+        if (doLintProfile) {
+            lintStagePrint("link", stageWallTime.deltaTime());
+            stageWallTime.start();
+        }
+
         if (v3Global.opt.stats()) V3Stats::statsStageAll(v3Global.rootp(), "Link");
 
         // Remove parameters by cloning modules to de-parameterized versions
@@ -190,6 +205,11 @@ static void process() {
         V3LinkWith::linkWith(v3Global.rootp());
 
         V3Error::abortIfErrors();
+
+        if (doLintProfile) {
+            lintStagePrint("param", stageWallTime.deltaTime());
+            stageWallTime.start();
+        }
 
         // Fix any remaining cross-interface refs created during V3Width::widthParamsEdit
         // that weren't captured earlier. Must run before V3Dead deletes template modules.
@@ -222,6 +242,11 @@ static void process() {
         V3WidthCommit::widthCommit(v3Global.rootp());
         v3Global.assertDTypesResolved(true);
         v3Global.widthMinUsage(VWidthMinUsage::MATCHES_WIDTH);
+
+        if (doLintProfile) {
+            lintStagePrint("width", stageWallTime.deltaTime());
+            stageWallTime.start();
+        }
 
         // End of elaboration
         V3Stats::addStatPerf(V3Stats::STAT_WALLTIME_ELAB, elabWallTime.deltaTime());
@@ -468,6 +493,13 @@ static void process() {
             // Create delayed assignments
             // This creates lots of duplicate ACTIVES so ActiveTop needs to be after this step.
             V3Delayed::delayedAll(v3Global.rootp());
+
+            if (doLintProfile) {
+                // Everything after V3Delayed exists to build the schedulable C++ model,
+                // not to lint, so exit early.
+                lintStagePrint("postwidth", stageWallTime.deltaTime());
+                return;
+            }
 
             // Make Active's on the top level.
             // Differs from V3Active, because identical clocks may be pushed
@@ -749,13 +781,17 @@ static bool verilate(const string& argString) {
     }
 
     // Read first filename
+    const VlOs::DeltaWallTime lintTotalWallTime{true};
+    const VlOs::DeltaWallTime parseWallTime{true};
     v3Global.readFiles();
     v3Global.removeStd();
+    if (v3Global.opt.lintFast()) lintStagePrint("parse", parseWallTime.deltaTime());
 
     // Link, etc, if needed
     if (!v3Global.opt.preprocOnly()) {  //
         process();
     }
+    if (v3Global.opt.lintFast()) lintStagePrint("total", lintTotalWallTime.deltaTime());
 
     // Final steps
     V3Global::dumpCheckGlobalTree("final", 990, dumpTreeEitherLevel() >= 3);

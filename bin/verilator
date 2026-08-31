@@ -501,6 +501,7 @@ detailed descriptions of these arguments.
     --lib-create <name>         Create a DPI library
      +libext+<ext>+[ext]...     Extensions for finding modules
      +librescan                 Ignored for compatibility
+    --lint-fast                 Lint only, skipping model generation passes
     --lint-only                 Lint, but do not make output
     --localize-max-size <value>  Tune localize optimization variable size
     --main                      Generate C++ main() file

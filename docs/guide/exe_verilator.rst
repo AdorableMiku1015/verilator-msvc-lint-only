@@ -1153,6 +1153,16 @@ Summary:
 
    Ignored for compatibility with other simulators.
 
+.. option:: --lint-fast
+
+   Same as :vlopt:`--lint-only`, but exits after the lint checks, before
+   the passes that build the schedulable C++ model. This is faster and
+   uses less memory, but skips some later diagnostics, notably the
+   UNOPTFLAT combinational loop warning.
+
+   Implies :vlopt:`--lint-only`, and prints the wall time used by each
+   lint stage (parse, link, param, width, post-width, total).
+
 .. option:: --lint-only
 
    Check the files for lint violations only, do not create any other

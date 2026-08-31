@@ -258,6 +258,7 @@ private:
     bool m_hierarchical = false;    // main switch: --hierarchical
     bool m_ignc = false;            // main switch: --ignc
     bool m_jsonOnly = false;        // main switch: --json-only
+    bool m_lintFast = false;        // main switch: --lint-fast
     bool m_lintOnly = false;        // main switch: --lint-only
     bool m_gmake = false;           // main switch: --make gmake
     bool m_makeJson = false;        // main switch: --make json
@@ -604,6 +605,7 @@ public:
     bool publicFlatRW() const { return m_publicFlatRW; }
     int publicDepth() const { return m_publicDepth; }
     bool anyPublicFlat() const { return m_publicParams || m_publicFlatRW || m_publicDepth; }
+    bool lintFast() const VL_MT_SAFE { return m_lintFast; }
     bool lintOnly() const VL_MT_SAFE { return m_lintOnly; }
     bool ignc() const { return m_ignc; }
     bool quietBuild() const VL_MT_SAFE { return m_quietBuild; }

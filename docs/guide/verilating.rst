@@ -258,7 +258,7 @@ model, it may be beneficial to performance to adjust the
 influences the partitioning of the model by adjusting the assumed execution
 time of DPI imports.
 
-When using :vlopt:`--trace-vcd` to perform VCD tracing, the VCD trace
+When performing VCD tracing, the VCD trace
 construction is parallelized using the same number of threads as specified
 with :vlopt:`--threads`, and is executed on the same thread pool as the
 model.
@@ -320,17 +320,11 @@ completing after the $stop or $finish.
 
 If using :vlopt:`--coverage`, the coverage routines are fully thread-safe.
 
-If using the DPI, Verilator assumes pure DPI imports are thread-safe,
-balancing performance versus safety. See :vlopt:`--threads-dpi`.
-
 If using :vlopt:`--savable`, the save/restore classes are not multithreaded
 and must be called only by the eval thread.
 
 If using :vlopt:`--sc`, the SystemC kernel is not thread-safe; therefore,
 the eval thread and main thread must be the same.
-
-If using :vlopt:`--trace-vcd` or other trace options, the tracing classes
-must be constructed and called from the main thread.
 
 If using :vlopt:`--vpi`, since SystemVerilog VPI was not architected by
 IEEE to be multithreaded, Verilator requires all VPI calls are only made
@@ -344,10 +338,6 @@ GNU Make
 
 Verilator defaults to creating GNU Make makefiles for the model. Verilator
 will call make automatically when the :vlopt:`--build` option is used.
-
-If calling Verilator from a makefile, the :vlopt:`--MMD` option will create
-a dependency file, allowing Make to only run Verilator if input Verilog
-files change.
 
 .. _cmake:
 

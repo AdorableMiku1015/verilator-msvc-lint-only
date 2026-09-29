@@ -75,10 +75,10 @@ Benchmarking & Optimization
 ===========================
 
 For best performance, run Verilator with the :vlopt:`-O3`
-:vlopt:`--x-assign fast <--x-assign>` :vlopt:`--x-initial fast
-<--x-initial>` :vlopt:`--no-assert` options. The :vlopt:`-O3` option will
+:vlopt:`--x-assign fast <--x-assign>` :vlopt:`--no-assert` options. The
+:vlopt:`-O3` option will
 require a longer time to run Verilator, and :vlopt:`--x-assign fast
-<--x-assign>` :vlopt:`--x-initial fast <--x-assign>` may increase the risk
+<--x-assign>` may increase the risk
 of reset bugs in trade for performance. The :vlopt:`--no-assert` will
 suppress checking assertions, which is faster and appropriate for
 known-good models running software, but may hide design errors. See the
@@ -118,15 +118,11 @@ applies to slow-path code, which rarely executes, often only once at the
 beginning or end of the simulation. OPT_SLOW is ignored if
 VM_PARALLEL_BUILDS is not 1, in which case all generated code will be
 compiled in a single compilation unit using OPT_FAST. See also the
-Verilator :vlopt:`--output-split` option. The OPT_GLOBAL variable applies
+Verilator model output split. The OPT_GLOBAL variable applies
 to common code in the runtime library used by Verilated models (shipped in
 $VERILATOR_ROOT/include). Additional C++ files passed on the verilator
 command line use OPT_FAST. The OPT variable applies to all compilation
 units and the specific "OPT" variables described above.
-
-You can also use the :vlopt:`-CFLAGS` and/or :vlopt:`-LDFLAGS` options on
-the verilator command line to pass arguments directly to the compiler or
-linker.
 
 The default values of the "OPT" variables are chosen to yield good
 simulation speed with reasonable C++ compilation times. To this end,
@@ -482,7 +478,7 @@ To use profiling:
 #. Make sure the Verilog code will call `$finish` at the end of simulation
    (otherwise the C library may not correctly create the `gmon.out` file in
    the later steps below).
-#. Run Verilator, adding the :vlopt:`--prof-cfuncs` option.
+#. Run Verilator (the `--prof-cfuncs` option is not available in this build).
 #. Build and run the simulation model.
 #. The model will create `gmon.out`.
 #. Run :command:`gprof gmon.out > gprof.log` to see where in the C++ code
@@ -631,15 +627,15 @@ balanced, leading to decreased performance. Thread PGO allows collecting
 profiling data to replace the estimates and better optimize these
 decisions.
 
-To use Thread PGO, Verilate the model with the :vlopt:`--prof-pgo` option.
+To use Thread PGO, Verilate the model with the `--prof-pgo` option.
 This will code to the verilated model to save profiling data for
 profile-guided optimization.
 
 Run the model executable. When the executable exits, it will create a
 profile.vlt file.
 
-Rerun Verilator, optionally omitting the :vlopt:`--prof-pgo` option and
-adding the :file:`profile.vlt` generated earlier to the command line.
+Rerun Verilator, adding the :file:`profile.vlt` generated earlier to the
+command line.
 
 Note there is no Verilator equivalent to GCC's --fprofile-use. Verilator's
 profile data file (:file:`profile.vlt`) can be placed directly on the

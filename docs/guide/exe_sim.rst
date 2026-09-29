@@ -107,7 +107,7 @@ Options:
 
 .. option:: +verilator+prof+vlt+file+<filename>
 
-   When a model was Verilated using :vlopt:`--prof-pgo`, sets the
+   When a model was Verilated using `--prof-pgo`, sets the
    profile-guided optimization data runtime filename to dump to. Defaults
    to :file:`profile.vlt`.
 
@@ -118,14 +118,14 @@ Options:
 
 .. option:: +verilator+rand+reset+<value>
 
-   When a model was Verilated using :vlopt:`--x-initial unique
-   <--x-initial>`, sets the simulation runtime initialization technique. 0
+   When a model was Verilated using `--x-initial unique`, sets the
+   simulation runtime initialization technique. 0
    = Reset to zeros. 1 = Reset to all-ones. 2 = Randomize. See
    :ref:`Unknown States`.  Default is 0.
 
 .. option:: +verilator+seed+<value>
 
-   For $random and :vlopt:`--x-initial unique <--x-initial>`, set the
+   For $random and `--x-initial unique`, set the
    simulation runtime random seed value. If not specified, the seed
    defaults to 1. If specified as 0, a non-zero seed is generated at
    startup; the picked value is exposed through ``$get_initial_random_seed``

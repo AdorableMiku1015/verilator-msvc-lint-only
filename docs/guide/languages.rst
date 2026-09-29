@@ -264,7 +264,7 @@ initialize to zero. However, randomization happens at initialization time;
 hence, during a single simulation run, the same constant (but random) value
 will be used every time the assignment is executed.
 
-All variables, depending on :vlopt:`--x-initial` setting, are typically
+All variables are typically
 randomly initialized using a function. You can determine that reset is
 working correctly by running several random simulation runs. On the first
 run, have the function initialize variables to zero. On the second, have it
@@ -280,9 +280,7 @@ holding variables are initialized to a random value. Event-driven
 simulators will generally trigger an edge on a transition from X to 1
 (posedge) or X to 0 (negedge). However, by default, since clocks are
 initialized to zero, Verilator will not trigger an initial negedge. Some
-code (particularly for reset) may rely on X->0 triggering an edge. The
-:vlopt:`--x-initial-edge` option enables this behavior. Comparing runs with
-and without this option will find such problems.
+code (particularly for reset) may rely on X->0 triggering an edge.
 
 
 Tri/Inout
@@ -479,7 +477,7 @@ $bits, $countbits, $countones, $finish, $isunknown, $onehot, $onehot0, $signed, 
 
 $dump/$dumpports and related
    $dumpfile or $dumpports will create a VCD or FST file (based on the
-   :vlopt:`--trace-vcd` option given when the model was Verilated). This
+   tracing enabled when the model was Verilated). This
    will take effect starting at the next eval() call. If you have multiple
    Verilated designs under the same C model, this will dump signals only
    from the design containing the $dumpvars.

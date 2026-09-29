@@ -296,7 +296,6 @@ public:
     void idPtrMapDumpJson(std::ostream& os);
     const std::string& ptrToId(const void* p);
     std::thread::id mainThreadId() const { return m_mainThreadId; }
-    static std::vector<std::string> verilatedCppFiles();
     uint64_t currentHierBlockCost() const { return m_currentHierBlockCost; }
     void currentHierBlockCost(uint64_t cost) { m_currentHierBlockCost = cost; }
 };

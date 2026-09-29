@@ -740,9 +740,8 @@ List Of Warnings
    cost), at the time of issuing a UNOPTFLAT Verilator did not know if the
    logic would eventually converge and assumed it would.
 
-   Next, run Verilator with :vlopt:`--prof-cfuncs -CFLAGS -DVL_DEBUG
-   <--prof-cfuncs>`. Rerun the test. Now just before the convergence error,
-   you should see additional output similar to this:
+   Rerun the test. Just before the convergence error, you should see
+   additional output similar to this:
 
    .. include:: ../../docs/gen/ex_DIDNOTCONVERGE_msg.rst
 
@@ -2466,17 +2465,11 @@ List Of Warnings
    Another way to resolve this warning is to add a
    :option:`/*verilator&32;split_var*/` metacomment described above. This
    will cause the variable to be split internally, potentially resolving
-   the conflict. If you run with :vlopt:`--report-unoptflat`, Verilator will
-   suggest possible candidates for :option:`/*verilator&32;split_var*/`.
+   the conflict.
 
    Before version 5.000, the UNOPTFLAT warning may also have been due to
    clock enables, identified from the reported path going through a clock
    gating instance. To fix these, the clock_enable meta comment was used.
-
-   To assist in resolving UNOPTFLAT, the option :vlopt:`--report-unoptflat`
-   can be used, which will provide suggestions for variables that can be
-   split up, and a graph of all the nodes connected in the loop. See the
-   Arguments section for more details.
 
    Ignoring this warning will only slow simulations; it will simulate
    correctly.
@@ -2491,11 +2484,8 @@ List Of Warnings
 
    One workaround is to request fewer threads with :vlopt:`--threads`.
 
-   Another possible workaround is to allow more MTasks in the simulation
-   runtime by increasing the value of :vlopt:`--threads-max-mtasks`. More
-   MTasks will result in more communication and synchronization overhead at
-   simulation runtime; the scheduler attempts to minimize the number of
-   MTasks for this reason.
+   MTasks result in more communication and synchronization overhead at
+   simulation runtime; the scheduler attempts to minimize their number.
 
    Ignoring this warning will only slow simulations; it will simulate
    correctly.

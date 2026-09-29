@@ -199,11 +199,6 @@ private:
     V3OptionsImp* m_impp;  // Slow hidden options
 
     // clang-format off
-    VStringSet m_cppFiles;     // argument: C++ files to link against
-    VStringList m_cFlags;      // argument: user CFLAGS
-    VStringList m_ldLibs;      // argument: user LDFLAGS
-    VStringList m_makeFlags;   // argument: user MAKEFLAGS
-    VStringSet m_compilerIncludes; // argument: user --compiler-include
     VStringSet m_futures;      // argument: -Wfuture- list
     VStringSet m_future0s;     // argument: -future list
     VStringSet m_future1s;     // argument: -future1 list
@@ -233,7 +228,6 @@ private:
     bool m_coverageExpr = false;    // main switch: --coverage-expr
     bool m_coverageFsm = false;     // main switch: --coverage-fsm
     bool m_coverageLine = false;    // main switch: --coverage-block
-    bool m_coveragePerInstance = false;  // main switch: --coverage-per-instance
     bool m_coverageToggle = false;  // main switch: --coverage-toggle
     bool m_coverageUnderscore = false;  // main switch: --coverage-underscore
     bool m_coverageUser = false;    // main switch: --coverage-func
@@ -245,12 +239,9 @@ private:
     bool m_debugLeak = true;        // main switch: --debug-leak
     bool m_debugNondeterminism = false;  // main switch: --debug-nondeterminism
     bool m_debugOptions = false;    // main switch: --debug-options
-    bool m_debugPartition = false;  // main switch: --debug-partition
     bool m_debugPreprocPassthru = false;  // main switch: --debug-preproc-passthru
     bool m_debugProtect = false;    // main switch: --debug-protect
     bool m_debugSelfTest = false;   // main switch: --debug-self-test
-    bool m_debugStackCheck = false;  // main switch: --debug-stack-check
-    int m_debugRuntimeTimeout = 0;  // main switch: --debug-runtime-timeout <n>
     bool m_debugWidth = false;      // main switch: --debug-width
     bool m_decoration = true;       // main switch: --decoration
     bool m_decorationNodes = false;  // main switch: --decoration=nodes
@@ -265,8 +256,6 @@ private:
     bool m_jsonOnly = false;        // main switch: --json-only
     bool m_lintFast = false;        // main switch: --lint-fast
     bool m_lintOnly = false;        // main switch: --lint-only
-    bool m_gmake = false;           // main switch: --make gmake
-    bool m_makeJson = false;        // main switch: --make json
     bool m_main = false;            // main switch: --main
     bool m_outFormatOk = false;     // main switch: --cc, --sc or --sp was specified
     bool m_pedantic = false;        // main switch: --Wpedantic
@@ -277,20 +266,15 @@ private:
     bool m_pinsUint8 = false;       // main switch: --pins-uint8
     bool m_preprocComments = false;  // main switch: --preproc-comments
     bool m_preprocDefines = false;  // main switch: --preproc-defines
-    bool m_profC = false;           // main switch: --prof-c
-    bool m_profCFuncs = false;      // main switch: --prof-cfuncs
     bool m_profExec = false;        // main switch: --prof-exec
-    bool m_profPgo = false;         // main switch: --prof-pgo
     bool m_protectIds = false;      // main switch: --protect-ids
     bool m_public = false;          // main switch: --public
     bool m_publicFlatRW = false;    // main switch: --public-flat-rw
     bool m_publicIgnore = false;    // main switch: --public-ignore
     bool m_publicParams = false;    // main switch: --public-params
-    bool m_quietBuild = false;      // main switch: --quiet-build
     bool m_quietExit = false;       // main switch: --quiet-exit
     bool m_quietStats = false;      // main switch: --quiet-stats
     bool m_relativeIncludes = false;  // main switch: --relative-includes
-    bool m_reportUnoptflat = false;  // main switch: --report-unoptflat
     bool m_savable = false;         // main switch: --savable
     VOptionBool m_schedZeroDelay;  // main switch: --sched-zero-delay
     bool m_stdPackage = true;       // main switch: --std-package
@@ -298,28 +282,17 @@ private:
     bool m_systemC = false;         // main switch: --sc: System C instead of simple C++
     bool m_stats = false;           // main switch: --stats
     bool m_statsVars = false;       // main switch: --stats-vars
-    bool m_threadsCoarsen = true;   // main switch: --threads-coarsen
-    bool m_threadsDpiPure = true;   // main switch: --threads-dpi all/pure
-    bool m_threadsDpiUnpure = false;  // main switch: --threads-dpi all
     VOptionBool m_timing;           // main switch: --timing
     bool m_trace = false;           // main switch: --trace
     bool m_traceCoverage = false;   // main switch: --trace-coverage
-    bool m_traceEnabledFst = false;  // main switch: --trace-fst
-    bool m_traceEnabledSaif = false;  // main switch: --trace-saif
-    bool m_traceEnabledVcd = false;  // main switch: --trace-vcd
     bool m_traceParams = true;      // main switch: --trace-params
-    bool m_traceStructs = false;    // main switch: --trace-structs
     bool m_noTraceTop = false;      // main switch: --no-trace-top
-    bool m_traceUnderscore = false; // main switch: --trace-underscore
-    bool m_underlineZero = false;   // main switch: --underline-zero; undocumented old Verilator 2
     bool m_verilate = true;         // main switch: --verilate
     VOptionBool m_vpi;              // main switch: --vpi
     bool m_waiverMultiline = false;  // main switch: --waiver-multiline
-    bool m_xInitialEdge = false;    // main switch: --x-initial-edge
 
     int         m_buildJobs = -1;    // main switch: --build-jobs, -j
     int         m_coverageExprMax = 32;    // main switch: --coverage-expr-max
-    int         m_convergeLimit = 10000;  // main switch: --converge-limit
     uint32_t    m_coverageMaxBins = 1024;  // main switch: --coverage-max-bins
     uint32_t    m_coverageMaxRealBins = 1024;  // main switch: --coverage-max-real-bins
     int         m_coverageMaxWidth = 256; // main switch: --coverage-max-width
@@ -329,46 +302,33 @@ private:
     int         m_hierChild = 0;      // main switch: --hierarchical-child
     int         m_hierThreads = 0;      // main switch: --hierarchical-threads
     int         m_ifDepth = 0;      // main switch: --if-depth
-    int         m_inlineCFuncs = 20;   // main switch: --inline-cfuncs
-    int         m_inlineCFuncsProduct = 200;   // main switch: --inline-cfuncs-product
     int         m_inlineMult = 2000;   // main switch: --inline-mult
     int         m_instrCountDpi = 200;   // main switch: --instr-count-dpi
     bool        m_jsonEditNums = true; // main switch: --no-json-edit-nums
     bool        m_jsonIds = true; // main switch: --no-json-ids
-    int         m_localizeMaxSize = 1024;  // main switch: --localize-max-size
-    VOptionBool m_makeDepend;  // main switch: -MMD
     int         m_maxNumWidth = 65536;  // main switch: --max-num-width
     int         m_funcRecursion = 1000;  // main switch: --func-recursion-depth
     int         m_moduleRecursion = 100;  // main switch: --module-recursion-depth
-    int         m_outputGroups = -1;  // main switch: --output-groups
     int         m_outputSplit = 20000;  // main switch: --output-split
-    int         m_outputSplitCFuncs = -1;  // main switch: --output-split-cfuncs
-    int         m_outputSplitCTrace = -1;  // main switch: --output-split-ctrace
     int         m_pinsBv = 65;       // main switch: --pins-bv
     int         m_preprocTokenLimit = 40000; // main switch: --preproc-token-limit
     int         m_publicDepth = 0;   // main switch: --public-depth
-    int         m_reloopLimit = 40; // main switch: --reloop-limit
     int         m_replicationLimit = 8192; // main switch: --replication-limit
     VOptionBool m_skipIdentical;  // main switch: --skip-identical
     bool        m_stopFail = true;  // main switch: --stop-fail
     int         m_threads = 1;      // main switch: --threads
-    int         m_threadsMaxMTasks = 0;  // main switch: --threads-max-mtasks
     VTimescale  m_timeDefaultPrec;  // main switch: --timescale
     VTimescale  m_timeDefaultUnit;  // main switch: --timescale
     VTimescale  m_timeOverridePrec;  // main switch: --timescale-override
     VTimescale  m_timeOverrideUnit;  // main switch: --timescale-override
     int         m_traceDepth = 0;   // main switch: --trace-depth
-    int         m_traceMaxArray = 32;  // main switch: --trace-max-array
-    int         m_traceMaxWidth = 4096; // main switch: --trace-max-width
     int         m_unrollCount = 64;  // main switch: --unroll-count
     int         m_unrollLimit = 16384;  // main switch: --unroll-limit
     int         m_unrollStmts = 30000;  // main switch: --unroll-stmts
     int         m_constraintArrayLimit = 64;  // main switch: --constraint-array-limit
     int         m_verilateJobs = -1;  // main switch: --verilate-jobs
 
-    int         m_compLimitBlocks = 0;  // compiler selection; number of nested blocks
     int         m_compLimitMembers = 64;  // compiler selection; number of members in struct before make anon array
-    int         m_compLimitParens = 240;  // compiler selection; number of nested parens
 
     string      m_buildDepBin;  // main switch: --build-dep-bin {filename}
     string      m_diagnosticsSarifOutput;  // main switch: --diagnostics-sarif-output
@@ -378,7 +338,6 @@ private:
     string      m_jsonOnlyMetaOutput;    // main switch: --json-only-meta-output
     string      m_l2Name;       // main switch: --l2name; "" for top-module's name
     string      m_libCreate;    // main switch: --lib-create {lib_name}
-    string      m_mainTopName;  // main switch: --main-top-name
     string      m_makeDir;      // main switch: -Mdir
     string      m_modPrefix;    // main switch: --mod-prefix
     string      m_pipeFilter;   // main switch: --pipe-filter
@@ -389,7 +348,6 @@ private:
     string      m_waiverOutput;  // main switch: --waiver-output {filename}
     string      m_work = "work";  // main switch: --work {libname}
     string      m_xAssign;      // main switch: --x-assign
-    string      m_xInitial;     // main switch: --x-initial
 
     // Language is now held in FileLine, on a per-node basis. However we still
     // have a concept of the default language at a global level.
@@ -402,11 +360,9 @@ private:
     bool m_fCaseDecoder; // main switch: -fno-case-decoder: case decoder conversion
     bool m_fCaseTable;   // main switch: -fno-case-table: case table conversion
     bool m_fCaseTree;    // main switch: -fno-case-tree: case tree conversion
-    bool m_fCombine;     // main switch: -fno-combine: common icode packing
     bool m_fConst;       // main switch: -fno-const: constant folding
     bool m_fConstBeforeDfg = true;  // main switch: -fno-const-before-dfg for testing only!
     bool m_fConstBitOpTree;  // main switch: -fno-const-bit-op-tree constant bit op tree
-    bool m_fConstEager = true;  // main switch: -fno-const-eagerly run V3Const during passes
     bool m_fDedupe;      // main switch: -fno-dedupe: logic deduplication
     bool m_fDfgPeephole = true; // main switch: -fno-dfg-peephole
     bool m_fDfgPushDownSels = true; // main switch: -fno-dfg-push-down-sels
@@ -415,29 +371,17 @@ private:
     bool m_fDeadAssigns;     // main switch: -fno-dead-assigns: remove dead assigns
     bool m_fDeadCells;   // main switch: -fno-dead-cells: remove dead cells
     bool m_fDeadMethods;   // main switch: -fno-dead-methods: remove dead methods
-    bool m_fExpand;      // main switch: -fno-expand: expansion of C macros
-    bool m_fFuncBalanceCat = true;  // main switch: -fno-func-balance-cat: expansion of C macros
-    bool m_fFuncSplitCat = true;  // main switch: -fno-func-split-cat: expansion of C macros
     bool m_fGate;        // main switch: -fno-gate: gate wire elimination
     // main switch: -fno-ico-change-detect: input change detection optimization
     VOptionBool m_fIcoChangeDetect{VOptionBool::OPT_DEFAULT_TRUE};
     bool m_fInline;      // main switch: -fno-inline: module inlining
-    bool m_fInlineCFuncs;  // main switch: -fno-inline-cfuncs: inline small C functions
     bool m_fInlineFuncs = true;  // main switch: -fno-inline-funcs: function inlining
     bool m_fInlineFuncsEager = true;  // main switch: -fno-inline-funcs-eager: don't inline eagerly
     bool m_fLife;        // main switch: -fno-life: variable lifetime
-    bool m_fLifePost;    // main switch: -fno-life-post: delayed assignment elimination
-    bool m_fLocalize;    // main switch: -fno-localize: convert temps to local variables
-    bool m_fMergeCond;   // main switch: -fno-merge-cond: merge conditionals
-    bool m_fMergeCondMotion = true; // main switch: -fno-merge-cond-motion: perform code motion
-    bool m_fReloop;      // main switch: -fno-reloop: reform loops
     bool m_fReorder;     // main switch: -fno-reorder: reorder assignments in blocks
     bool m_fSlice = true;  // main switch: -fno-slice: array assignment slicing
     int  m_fSliceElementLimit = 256;  // main switch: --fslice-element-limit
     bool m_fSplit;       // main switch: -fno-split: always assignment splitting
-    bool m_fSubst;       // main switch: -fno-subst: substitute expression temp values
-    bool m_fSubstConst;  // main switch: -fno-subst-const: final constant substitution
-    bool m_fTable;       // main switch: -fno-table: lookup table creation
     bool m_fTaskifyAll = false;  // main switch: --ftaskify-all-forked
     bool m_fVarSplit;    // main switch: -fno-var-split: automatic variable splitting
     // clang-format on
@@ -482,11 +426,6 @@ public:
     unsigned dumpSrcLevel(const string& srcfile_path) const VL_MT_SAFE;
 
     // METHODS
-    void addCppFile(const string& filename);
-    void addCFlags(const string& filename);
-    void addCompilerIncludes(const string& filename);
-    void addLdLibs(const string& filename);
-    void addMakeFlags(const string& filename);
     void addLibMapFile(const string& filename);
     void addLibraryFile(const string& filename, const string& libname);
     void addVFile(const string& filename, const string& libname);
@@ -503,7 +442,6 @@ public:
     bool preprocNoLine() const { return m_preprocNoLine; }
     bool preprocResolve() const { return m_preprocResolve; }
     int preprocTokenLimit() const { return m_preprocTokenLimit; }
-    bool underlineZero() const { return m_underlineZero; }
     bool systemC() const VL_MT_SAFE { return m_systemC; }
     bool savable() const VL_MT_SAFE { return m_savable; }
     VOptionBool schedZeroDelay() const { return m_schedZeroDelay; }
@@ -535,7 +473,6 @@ public:
     bool coverageExpr() const { return m_coverageExpr; }
     bool coverageFsm() const { return m_coverageFsm; }
     bool coverageLine() const { return m_coverageLine; }
-    bool coveragePerInstance() const { return m_coveragePerInstance; }
     bool coverageToggle() const { return m_coverageToggle; }
     bool coverageUnderscore() const { return m_coverageUnderscore; }
     bool coverageUser() const { return m_coverageUser; }
@@ -546,17 +483,13 @@ public:
     bool debugExitParse() const { return m_debugExitParse; }
     bool debugLeak() const { return m_debugLeak; }
     bool debugNondeterminism() const { return m_debugNondeterminism; }
-    bool debugPartition() const { return m_debugPartition; }
     bool debugPreprocPassthru() const VL_MT_SAFE { return m_debugPreprocPassthru; }
     bool debugProtect() const VL_MT_SAFE { return m_debugProtect; }
-    int debugRuntimeTimeout() const { return m_debugRuntimeTimeout; }
     bool debugSelfTest() const { return m_debugSelfTest; }
-    bool debugStackCheck() const { return m_debugStackCheck; }
     bool debugWidth() const VL_PURE { return m_debugWidth; }
     bool decoration() const VL_MT_SAFE { return m_decoration; }
     bool decorationNodes() const VL_MT_SAFE { return m_decorationNodes; }
     bool diagnosticsSarif() const VL_MT_SAFE { return m_diagnosticsSarif; }
-    bool dpiHdrOnly() const { return m_dpiHdrOnly; }
     bool dumpAstPatterns() const {
         return m_dumpLevel.count("ast-patterns") && m_dumpLevel.at("ast-patterns");
     }
@@ -569,22 +502,13 @@ public:
     }
     bool emitAccessors() const { return m_emitAccessors; }
     bool exe() const { return m_exe; }
+    bool dpiHdrOnly() const { return m_dpiHdrOnly; }
     bool flatten() const { return m_flatten; }
     bool fourstate() const { return m_fourstate; }
-    bool gmake() const { return m_gmake; }
-    bool makeJson() const { return m_makeJson; }
-    bool threadsDpiPure() const { return m_threadsDpiPure; }
-    bool threadsDpiUnpure() const { return m_threadsDpiUnpure; }
-    bool threadsCoarsen() const { return m_threadsCoarsen; }
     VOptionBool timing() const { return m_timing; }
     bool trace() const { return m_trace; }
     bool traceCoverage() const { return m_traceCoverage; }
-    bool traceEnabledFst() const { return m_traceEnabledFst; }
-    bool traceEnabledSaif() const { return m_traceEnabledSaif; }
-    bool traceEnabledVcd() const { return m_traceEnabledVcd; }
     bool traceParams() const { return m_traceParams; }
-    bool traceStructs() const { return m_traceStructs; }
-    bool traceUnderscore() const { return m_traceUnderscore; }
     bool main() const { return m_main; }
     bool outFormatOk() const { return m_outFormatOk; }
     bool jsonOnly() const { return m_jsonOnly; }
@@ -597,11 +521,7 @@ public:
     bool pinsUint8() const { return m_pinsUint8; }
     bool preprocComments() const { return m_preprocComments; }
     bool preprocDefines() const { return m_preprocDefines; }
-    bool profC() const { return m_profC; }
-    bool profCFuncs() const { return m_profCFuncs; }
     bool profExec() const { return m_profExec; }
-    bool profPgo() const { return m_profPgo; }
-    bool usesProfiler() const { return profExec() || profPgo(); }
     bool protectIds() const VL_MT_SAFE { return m_protectIds; }
     bool allPublic() const { return m_public; }
     bool publicParams() const { return m_publicParams; }
@@ -612,19 +532,15 @@ public:
     bool lintFast() const VL_MT_SAFE { return m_lintFast; }
     bool lintOnly() const VL_MT_SAFE { return m_lintOnly; }
     bool ignc() const { return m_ignc; }
-    bool quietBuild() const VL_MT_SAFE { return m_quietBuild; }
     bool quietExit() const VL_MT_SAFE { return m_quietExit; }
     bool quietStats() const VL_MT_SAFE { return m_quietStats; }
-    bool reportUnoptflat() const { return m_reportUnoptflat; }
     bool verilate() const { return m_verilate; }
     bool vpi() const { return m_vpi.isTrue(); }
     bool waiverMultiline() const { return m_waiverMultiline; }
-    bool xInitialEdge() const { return m_xInitialEdge; }
     bool serializeOnly() const { return m_jsonOnly; }
     bool topIfacesSupported() const { return lintOnly() && !hierarchical(); }
 
     int buildJobs() const VL_MT_SAFE { return m_buildJobs; }
-    int convergeLimit() const { return m_convergeLimit; }
     int coverageExprMax() const { return m_coverageExprMax; }
     uint32_t coverageMaxBins() const { return m_coverageMaxBins; }
     uint32_t coverageMaxRealBins() const { return m_coverageMaxRealBins; }
@@ -634,28 +550,19 @@ public:
     int expandLimit() const { return m_expandLimit; }
     int gateStmts() const { return m_gateStmts; }
     int ifDepth() const { return m_ifDepth; }
-    int inlineCFuncs() const { return m_inlineCFuncs; }
-    int inlineCFuncsProduct() const { return m_inlineCFuncsProduct; }
     int inlineMult() const { return m_inlineMult; }
     int instrCountDpi() const { return m_instrCountDpi; }
-    int localizeMaxSize() const { return m_localizeMaxSize; }
     bool jsonEditNums() const { return m_jsonEditNums; }
     bool jsonIds() const { return m_jsonIds; }
-    VOptionBool makeDepend() const { return m_makeDepend; }
     int maxNumWidth() const { return m_maxNumWidth; }
     int funcRecursionDepth() const { return m_funcRecursion; }
     int moduleRecursionDepth() const { return m_moduleRecursion; }
     int outputSplit() const { return m_outputSplit; }
-    int outputSplitCFuncs() const { return m_outputSplitCFuncs; }
-    int outputSplitCTrace() const { return m_outputSplitCTrace; }
-    int outputGroups() const { return m_outputGroups; }
     int pinsBv() const VL_MT_SAFE { return m_pinsBv; }
-    int reloopLimit() const { return m_reloopLimit; }
     int replicationLimit() const { return m_replicationLimit; }
     VOptionBool skipIdentical() const { return m_skipIdentical; }
     bool stopFail() const { return m_stopFail; }
     int threads() const VL_MT_SAFE { return m_threads; }
-    int threadsMaxMTasks() const { return m_threadsMaxMTasks; }
     bool mtasks() const VL_MT_SAFE { return (m_threads > 1); }
     VTimescale timeDefaultPrec() const { return m_timeDefaultPrec; }
     VTimescale timeDefaultUnit() const { return m_timeDefaultUnit; }
@@ -664,20 +571,13 @@ public:
     VTimescale timeComputePrec(const VTimescale& flag) const;
     VTimescale timeComputeUnit(const VTimescale& flag) const;
     int traceDepth() const { return m_traceDepth; }
-    int traceMaxArray() const { return m_traceMaxArray; }
-    int traceMaxWidth() const { return m_traceMaxWidth; }
-    bool useTraceParallel() const {
-        return trace() && traceEnabledVcd() && (threads() > 1 || hierChild() > 1);
-    }
     int unrollCount() const { return m_unrollCount; }
     int unrollLimit() const { return m_unrollLimit; }
     int unrollStmts() const { return m_unrollStmts; }
     int constraintArrayLimit() const { return m_constraintArrayLimit; }
     int verilateJobs() const { return m_verilateJobs; }
 
-    int compLimitBlocks() const { return m_compLimitBlocks; }
     int compLimitMembers() const VL_MT_SAFE { return m_compLimitMembers; }
-    int compLimitParens() const { return m_compLimitParens; }
 
     string diagnosticsSarifOutput() const VL_MT_SAFE {
         return m_diagnosticsSarifOutput.empty() ? makeDir() + "/" + prefix() + ".sarif"
@@ -689,16 +589,6 @@ public:
     string jsonOnlyMetaOutput() const { return m_jsonOnlyMetaOutput; }
     string l2Name() const { return m_l2Name; }
     string libCreate() const { return m_libCreate; }
-    string libCreateName(bool shared) const {
-        string libName = "lib" + libCreate();
-        if (shared) {
-            libName += ".so";
-        } else {
-            libName += ".a";
-        }
-        return libName;
-    }
-    string mainTopName() const { return m_mainTopName; }
     string makeDir() const VL_MT_SAFE { return m_makeDir; }
     string modPrefix() const VL_MT_SAFE { return m_modPrefix; }
     string pipeFilter() const { return m_pipeFilter; }
@@ -713,13 +603,7 @@ public:
     string work() const { return m_work; }
     bool isWaiverOutput() const { return !m_waiverOutput.empty(); }
     string xAssign() const { return m_xAssign; }
-    string xInitial() const { return m_xInitial; }
 
-    const VStringSet& cppFiles() const { return m_cppFiles; }
-    const VStringList& cFlags() const { return m_cFlags; }
-    const VStringSet& compilerIncludes() const { return m_compilerIncludes; }
-    const VStringList& ldLibs() const { return m_ldLibs; }
-    const VStringList& makeFlags() const { return m_makeFlags; }
     const VFileLibSet& libraryFiles() const { return m_libraryFiles; }
     const VStringSet& libmapFiles() const { return m_libmapFiles; }
     const VFileLibList& vFiles() const { return m_vFiles; }
@@ -742,11 +626,9 @@ public:
     bool fCaseDecoder() const { return m_fCaseDecoder; }
     bool fCaseTable() const { return m_fCaseTable; }
     bool fCaseTree() const { return m_fCaseTree; }
-    bool fCombine() const { return m_fCombine; }
     bool fConst() const { return m_fConst; }
     bool fConstBeforeDfg() const { return m_fConstBeforeDfg; }
     bool fConstBitOpTree() const { return m_fConstBitOpTree; }
-    bool fConstEager() const { return m_fConstEager; }
     bool fDedupe() const { return m_fDedupe; }
     bool fDfg() const { return m_fDfg; }
     bool fDfgPeephole() const { return m_fDfgPeephole; }
@@ -758,38 +640,17 @@ public:
     bool fDeadAssigns() const { return m_fDeadAssigns; }
     bool fDeadCells() const { return m_fDeadCells; }
     bool fDeadMethods() const { return m_fDeadMethods; }
-    bool fExpand() const { return m_fExpand; }
-    bool fFuncBalanceCat() const { return m_fFuncBalanceCat; }
-    bool fFuncSplitCat() const { return m_fFuncSplitCat; }
-    bool fFunc() const { return fFuncSplitCat() || fFuncBalanceCat(); }
     bool fGate() const { return m_fGate; }
-    VOptionBool fIcoChangeDetect() const { return m_fIcoChangeDetect; }
     bool fInline() const { return m_fInline; }
-    bool fInlineCFuncs() const { return m_fInlineCFuncs; }
     bool fInlineFuncs() const { return m_fInlineFuncs; }
     bool fInlineFuncsEager() const { return m_fInlineFuncsEager; }
     bool fLife() const { return m_fLife; }
-    bool fLifePost() const { return m_fLifePost; }
-    bool fLocalize() const { return m_fLocalize; }
-    bool fMergeCond() const { return m_fMergeCond; }
-    bool fMergeCondMotion() const { return m_fMergeCondMotion; }
-    bool fReloop() const { return m_fReloop; }
     bool fReorder() const { return m_fReorder; }
     bool fSlice() const { return m_fSlice; }
     int fSliceElementLimit() const { return m_fSliceElementLimit; }
     bool fSplit() const { return m_fSplit; }
-    bool fSubst() const { return m_fSubst; }
-    bool fSubstConst() const { return m_fSubstConst; }
-    bool fTable() const { return m_fTable; }
     bool fTaskifyAll() const { return m_fTaskifyAll; }
     bool fVarSplit() const { return m_fVarSplit; }
-
-    std::string traceClassBase() const VL_MT_SAFE;  // Deprecated
-    std::string traceClassLang() const VL_MT_SAFE;  // Deprecated
-    std::vector<std::string> traceClassBases() const VL_MT_SAFE;
-    std::vector<std::string> traceClassLangs() const VL_MT_SAFE;
-    std::vector<std::string> traceSourceBases() const VL_MT_SAFE;
-    std::vector<std::string> traceSourceLangs() const VL_MT_SAFE;
 
     bool hierarchical() const { return m_hierarchical; }
     int hierChild() const VL_MT_SAFE { return m_hierChild; }

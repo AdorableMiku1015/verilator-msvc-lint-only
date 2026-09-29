@@ -19,9 +19,9 @@ The following arguments may be passed to the "verilator" executable.
    :vlopt:`--lib-create`, :vlopt:`--hierarchical`, :vlopt:`--savable`,
    :vlopt:`--protect-lib` and :vlopt:`--protect-ids`. Diagnostics that can
    only be computed while building the model, notably
-   :vlopt:`UNOPTFLAT`, are not reported either. Options that only tune the
-   removed passes, such as :vlopt:`-ftable`, are accepted and have no
-   effect.
+   :vlopt:`UNOPTFLAT`, are not reported either. Options that only tuned the
+   removed passes, such as ``-ftable``, no longer exist and are reported as
+   invalid.
 
 Summary:
 
@@ -31,26 +31,14 @@ Summary:
 .. option:: <file.a/.o/.so>
 
    Specifies optional object or library files to be linked with the
-   Verilog code, as a shorthand for
-   :vlopt:`-LDFLAGS \<file\> <-LDFLAGS>`. The file path should either be
-   absolute, or relative to where the make will be executed from, or add
-   the appropriate directory to your makefile's VPATH to find the file.
-
-   If any files are specified in this way, Verilator will include a make
-   rule that uses these files when linking the module's executable. This
-   generally is only useful when used with the :vlopt:`--exe` option.
+   Verilog code. In this lint-only build nothing is linked, so the
+   argument is accepted and ignored.
 
 .. option:: <file.c/.cc/.cpp/.cxx>
 
-   Used with :vlopt:`--exe` to specify optional C++ files to be linked in
-   with the Verilog code. The file path should either be absolute, or
-   relative to where the make will be executed from, or add to your
-   makefile's VPATH the appropriate directory to find the file.
-
-   See also :vlopt:`-CFLAGS` and :vlopt:`-LDFLAGS` options, which are
-   useful when the C++ files need special compiler flags. The compiler
-   flags add by default `-DVERILATOR=1`, so an `#ifdef VERILATOR` may be
-   used to conditionally preprocess .cpp code for different simulators.
+   Optional C++ files to be compiled with the Verilog code. In this
+   lint-only build nothing is compiled, so the argument is accepted and
+   ignored.
 
 .. option:: <file.v>
 
@@ -218,16 +206,6 @@ Summary:
    Specify C++ without SystemC output mode; see also the :vlopt:`--sc`
    option.
 
-.. option:: -CFLAGS <flags>
-
-   Add specified C compiler argument to the generated makefiles. For
-   multiple flags, either pass them as a single argument with space
-   separators quoted in the shell (:command:`-CFLAGS "-a -b"`), or use
-   multiple -CFLAGS options (:command:`-CFLAGS -a -CFLAGS -b`).
-
-   When make is run on the generated makefile, these will be passed to the
-   C++ compiler (g++/clang++/msvc++).
-
 .. option:: --clk <signal-name>
 
    Deprecated and has no effect (ignored).
@@ -261,36 +239,6 @@ Summary:
    Prevent the specified signal from being marked as a clock. See
    :vlopt:`--clk`.
 
-.. option:: --compiler <compiler-name>
-
-   Enables workarounds for the specified C++ compiler (list below). This
-   does not change any performance tuning options, but it may in the
-   future. This also does not change default compiler flags; these are
-   determined when Verilator was configured.
-
-   clang
-     Tune for clang. This may reduce execution speed as it enables several
-     workarounds to avoid silly hard-coded limits in clang. This includes
-     breaking deep structures as for msvc, as described below.
-
-   gcc
-     Tune for GNU C++, although generated code should work on almost any
-     compliant C++ compiler. Currently, the default.
-
-   msvc
-     Tune for Microsoft Visual C++. This may reduce execution speed as it
-     enables several workarounds to avoid silly hard-coded limits in
-     MSVC++. This includes breaking deeply nested parenthesized expressions
-     into sub-expressions to avoid error C1009, and breaking deep blocks
-     into functions to avoid error C1061.
-
-.. option:: --compiler-include <header-path>
-
-   Specifies additional headers to be included in the final PCH header.
-   It is required to add them to this header, due to compilers'
-   limitation that allow only one precompiled header per compilation.
-   Use this instead of ::vlopt:`-CFLAGS` with `-include <header-path>`.
-
 .. option:: --constraint-array-limit <size>
 
    Specifies the maximum array size for which array reduction methods
@@ -301,11 +249,6 @@ Summary:
 
    Defaults to 64. Setting to 0 disables all array reduction constraint
    expansion.
-
-.. option:: --converge-limit <loops>
-
-   Rarely needed. Specifies the maximum number of runtime iterations before
-   creating a model failed to converge error. Defaults to 10000.
 
 .. option:: --coverage
 
@@ -364,20 +307,6 @@ Summary:
    toggle coverage. Defaults to 256, as covering large vectors may greatly
    slow coverage simulations.
 
-.. option:: --coverage-per-instance
-
-   For Verilator-inserted coverage, preserve generated coverage counters and
-   ``.dat`` records per hierarchy instance. This option must be specified when
-   Verilating the model, together with one or more coverage instrumentation
-   options, for example :vlopt:`--coverage`, :vlopt:`--coverage-line`,
-   :vlopt:`--coverage-toggle`, :vlopt:`--coverage-expr`,
-   :vlopt:`--coverage-fsm`, or :vlopt:`--coverage-user`. It may increase
-   generated model size, counter memory, coverage write time, and ``.dat`` file
-   size.
-
-   This does not affect SystemVerilog ``cover``, which uses the IEEE-specified
-   coverage option ``per_instance``.
-
 .. option:: --coverage-toggle
 
    Enables adding signal toggle coverage. See :ref:`Toggle Coverage`.
@@ -385,8 +314,7 @@ Summary:
 .. option:: --coverage-underscore
 
    Enable coverage of signals that start with an underscore. Normally,
-   these signals are not covered. See also :vlopt:`--trace-underscore`
-   option.
+   these signals are not covered.
 
 .. option:: --coverage-user
 
@@ -730,8 +658,6 @@ Summary:
 
    Rarely needed. Disable converting case statements into bit-wise branch trees.
 
-.. option:: -fno-combine
-
 .. option:: -fno-const
 
 .. option:: -fno-const-before-dfg
@@ -741,8 +667,6 @@ Summary:
    should not be used otherwise.
 
 .. option:: -fno-const-bit-op-tree
-
-.. option:: -fno-const-eager
 
 .. option:: -fno-dead-assigns
 
@@ -800,46 +724,15 @@ Summary:
    In versions before 5.048: Do not apply the DFG optimizer across module
    scopes.
 
-.. option:: -fno-expand
-
-.. option:: -fno-func-opt
-
-.. option:: -fno-func-opt-balance-cat
-
-.. option:: -fno-func-opt-split-cat
-
 .. option:: -fno-gate
 
    Rarely needed. Do not apply the gate-level wire optimizations. Using
    this is not recommended as may cause additional warnings and ordering
    issues.
 
-.. option:: -fno-ico-change-detect
-
-   Rarely needed. Disable input change detection in the input combinational
-   ('ico') region. With change detection enabled (the default, unless
-   :vlopt:`--vpi` is passed), the input combinational logic is evaluated only
-   when a top level input has actually changed, rather than unconditionally on
-   the first scheduling iteration.
-
-   The change detection logic assumes a top level input only ever changes
-   externally between evaluations. The optimization is automatically disabled
-   for top level input signals that are written within the design. Accesses via
-   the VPI cannot be analyzed at compile time, therefore :vlopt:`--vpi`
-   disables this optimization for all inputs; it may be turned back on by
-   explicitly passing :vlopt:`-fico-change-detect <-fno-ico-change-detect>`.
-
 .. option:: -fno-inline
 
    Rarely needed. Disable module inlining.
-
-.. option:: -fno-inline-cfuncs
-
-   Rarely needed. Disable inlining of small generated C++ functions into their
-   callers.
-
-   This optimization is automatically disabled when :vlopt:`--prof-cfuncs` is
-   used.
 
 .. option:: -fno-inline-funcs
 
@@ -851,19 +744,11 @@ Summary:
 
 .. option:: -fno-life
 
-.. option:: -fno-life-post
-
 .. option:: -fno-lift-expr
 
    Deprecated and has no effect (ignored).
 
    In versions before 5.054: Disable lifting of expressions out of statements.
-
-.. option:: -fno-localize
-
-.. option:: -fno-merge-cond
-
-.. option:: -fno-merge-cond-motion
 
 .. option:: -fno-merge-const-pool
 
@@ -872,23 +757,11 @@ Summary:
    In versions before 5.054: Disable merging constant pool entries that have
    the same value but different data types.
 
-.. option:: -fno-reloop
-
 .. option:: -fno-reorder
 
 .. option:: -fno-slice
 
 .. option:: -fno-split
-
-.. option:: -fno-subst
-
-.. option:: -fno-subst-const
-
-.. option:: -fno-table
-
-   Rarely needed. Disables one of the internal optimization steps. These
-   are typically used only when recommended by a maintainer to help debug
-   or work around an issue.
 
 .. option:: -fno-var-split
 
@@ -1065,24 +938,6 @@ Summary:
    compatibility and is not recommended usage as this is not supported by
    some third-party tools.
 
-.. option:: --inline-cfuncs <value>
-
-   Tune the inlining of small generated C++ function. Functions no bigger than
-   <value> nodes will be inlined if possible. The default is 20.
-
-   See also :vlopt:`--inline-cfuncs-product` and :vlopt:`-fno-inline-cfuncs`.
-
-.. option:: --inline-cfuncs-product <value>
-
-   Tune the inlining of small generated C++ function. If a function's node
-   count multiplied by the number of calls is not bigger than <value>, the
-   function will be inlined if possible.
-
-   This allows functions that are called only once or twice to be inlined even
-   if they exceed the small function threshold. The default is 200.
-
-   See also :vlopt:`--inline-cfuncs` and :vlopt:`-fno-inline-cfuncs`.
-
 .. option:: --inline-mult <value>
 
    Tune the inlining of modules. The default value of 2000 specifies that
@@ -1104,9 +959,7 @@ Summary:
 .. option:: -j [<value>]
 
    Specify the level of parallelism for :vlopt:`--build` if
-   :vlopt:`--build-jobs` isn't provided, and the internal compilation steps
-   of Verilator if :vlopt:`--verilate-jobs` isn't provided. Also sets
-   :vlopt:`--output-groups` if isn't provided.
+   :vlopt:`--verilate-jobs` isn't provided.
 
    If zero, uses the number of threads available to the process, which is
    the number of threads assigned by processor affinity (e.g. using
@@ -1163,21 +1016,6 @@ Summary:
 
    A synonym for :vlopt:`--default-language`, for compatibility with other
    tools and earlier versions of Verilator.
-
-.. option:: -LDFLAGS <flags>
-
-   Add specified C linker arguments to the generated makefiles. For
-   multiple flags, either pass them as a single argument with space
-   separators quoted in the shell (``-LDFLAGS "-a -b"``), or use
-   multiple -LDFLAGS arguments (``-LDFLAGS -a -LDFLAGS -b``).
-
-   When make is run on the generated makefile, these will be passed to the
-   C++ linker (ld) **after** the primary file being linked. This flag is
-   called :vlopt:`-LDFLAGS` as that's the traditional name in simulators;
-   it's would have been better called LDLIBS as that's the Makefile
-   variable it controls. (In Make, LDFLAGS is before the first object,
-   LDLIBS after. -L libraries need to be in the Make variable LDLIBS, not
-   LDFLAGS.)
 
 .. option:: --lib-create <name>
 
@@ -1240,11 +1078,6 @@ Summary:
    If the design is not to be completely Verilated, see also the
    :vlopt:`--bbox-sys` and :vlopt:`--bbox-unsup` options.
 
-.. option:: --localize-max-size <value>
-
-   Rarely needed. Set the maximum variable size in bytes for it to be
-   subject to localizing-to-stack optimization. Defaults to 1024.
-
 .. option:: --main
 
    Generates a top-level C++ main() file that supports parsing arguments,
@@ -1263,41 +1096,6 @@ Summary:
 
    See also :vlopt:`--binary`.
 
-.. option:: --main-top-name <string>
-
-   Specify the name passed to the Verilated model being constructed, in the
-   generated C++ main() function.
-
-   If the string ``"-"`` is used, no top level scope is added.
-
-.. option:: --make <build-tool>
-
-   Generates a script for the specified build tool.
-
-   Supported values are ``gmake`` for GNU Make, or ``json`` to create a
-   JSON file to feed other build tools.
-
-   Verilator also supports building with CMake, but CMakeLists.txt
-   under-the-covers uses the ``--make json`` output format. There was a
-   native ``--make cmake`` but it was removed in Version 5.046.
-
-   Multiple options can be specified together. If no build tool is
-   specified, gmake is assumed. The executable of gmake can be configured
-   via the environment variable :option:`MAKE`.
-
-   When using :vlopt:`--build`, Verilator takes over the responsibility of
-   building the model library/executable. For this reason :option:`--make`
-   cannot be specified when using :vlopt:`--build`.
-
-.. option:: -MAKEFLAGS <string>
-
-   When using :vlopt:`--build`, add the specified argument to the invoked
-   make command line. For multiple flags, either pass them as a single
-   argument with space separators quoted in the shell (e.g. ``-MAKEFLAGS
-   "-a -b"``), or use multiple -MAKEFLAGS arguments (e.g.
-   ``-MAKEFLAGS -l -MAKEFLAGS -k``). Use of this option should not be
-   required for simple builds using the host toolchain.
-
 .. option:: --max-num-width <value>
 
    Set the maximum number literal width (e.g., in 1024'd22 the 1024).
@@ -1312,14 +1110,6 @@ Summary:
    The directory is created if it does not exist and the parent directories
    exist; otherwise, manually create the Mdir before calling Verilator.
 
-.. option:: --MMD
-
-.. option:: --no-MMD
-
-   Enable/disable the creation of .d dependency files, used for make
-   dependency detection, similar to gcc -MMD option. By default this option
-   is enabled for :vlopt:`--cc` or :vlopt:`--sc` modes.
-
 .. option:: --mod-prefix <topname>
 
    Specifies the name to prepend to all lower-level classes. Defaults to
@@ -1327,7 +1117,7 @@ Summary:
 
 .. option:: --MP
 
-   When creating .d dependency files with :vlopt:`--MMD` option, make phony
+   When creating .d dependency files, make phony
    targets. Similar to :command:`gcc -MP` option.
 
 .. option:: +notimingchecks
@@ -1355,10 +1145,9 @@ Summary:
 .. option:: -O3
 
    Enables slow optimizations for the code Verilator itself generates (as
-   opposed to :vlopt:`-CFLAGS -O3 <-CFLAGS>` which affects the C compiler's
-   optimization. :vlopt:`-O3` may improve simulation performance at the
-   cost of compile time. This currently sets :vlopt:`--inline-mult -1
-   <--inline-mult>`.
+   opposed to the C compiler's own optimization settings. :vlopt:`-O3` may
+   improve simulation performance at the cost of compile time. This
+   currently sets :vlopt:`--inline-mult -1 <--inline-mult>`.
 
 .. option:: -O<optimization-letter>
 
@@ -1377,66 +1166,6 @@ Summary:
    Rarely needed. Disables a bug fix for ordering of clock enables with
    delayed assignments. This option should only be used when suggested by
    the developers.
-
-.. option:: --output-groups <numfiles>
-
-   Enables concatenating the output .cpp files into the given number of
-   effective output .cpp files. This minimizes the compiler startup
-   overhead from compiling many small files, which can happen in designs
-   making extensive use of SystemVerilog classes, templates or generate
-   blocks.
-
-   Using :vlopt:`--output-groups` can adversely impact caching and
-   stability (as in reproducibility) of compiled code. Compilation of
-   larger .cpp files also has higher memory requirements. Too low values
-   might result in swap thrashing with large designs, high values give no
-   benefits.
-
-   Typically setting the number of files to the hardware thread count,
-   corresponding to number of compiler jobs that can run in parallel, will
-   lead to fastest build times. (e.g. for small to medium designs the value
-   should range from 2 to 20.)
-
-   Zero disables this feature. Negative one, the default, sets the groups
-   to the value from :vlopt:`--build-jobs`, or from :vlopt:`-j`, or zero in
-   that priority.
-
-.. option:: --output-split <statements>
-
-   Enables splitting the output .cpp files into multiple outputs. When a
-   C++ file exceeds the specified number of operations, a new file will be
-   created at the next function boundary. In addition, if the total output
-   code size exceeds the specified value, VM_PARALLEL_BUILDS will be set to
-   1 by default in the generated makefiles, making parallel compilation
-   possible. Using :vlopt:`--output-split` should have only a trivial
-   impact on model performance. But can greatly improve C++ compilation
-   speed. The use of "ccache" (set for you if present at configure time) is
-   also more effective with this option.
-
-   This option is on by default with a value of 20000. To disable, pass with a
-   value of 0.
-
-.. option:: --output-split-cfuncs <statements>
-
-   Enables splitting functions in the output .cpp files into multiple
-   functions. When a generated function exceeds the specified number of
-   operations, a new function will be created. With
-   :vlopt:`--output-split`, this will enable the C++ compiler to compile
-   faster, at a small loss in performance that gets worse with decreasing
-   split values. Note that this option is stronger than
-   :vlopt:`--output-split` in the sense that :vlopt:`--output-split` will
-   not split inside a function.
-
-   Defaults to the value of :vlopt:`--output-split`, unless explicitly
-   specified.
-
-.. option:: --output-split-ctrace <statements>
-
-   Similar to :vlopt:`--output-split-cfuncs`, it enables splitting trace
-   functions in the output .cpp files into multiple functions.
-
-   Defaults to the value of :vlopt:`--output-split`, unless explicitly
-   specified.
 
 .. option:: -P
 
@@ -1552,35 +1281,10 @@ Summary:
    Rarely needed. Opposite of :vlopt:`--public`. This is the default; this
    option exists for backwards compatibility.
 
-.. option:: --prof-c
-
-   When compiling the C++ code, enable the compiler's profiling flag
-   (e.g., ``g++ -pg``). See :ref:`Profiling`.
-
-   Using :vlopt:`--prof-cfuncs` also enables :vlopt:`--prof-c`.
-
-.. option:: --prof-cfuncs
-
-   Modify the created C++ functions to support profiling. The functions
-   will be minimized to contain one "basic" statement, generally a single
-   always block or wire statement. (This may slow down the executable by
-   ~5%.) Furthermore, the function name will be suffixed with the basename
-   of the Verilog module and the line number the statement came from. This
-   allows gprof or oprofile reports to be correlated with the original
-   Verilog source statements. See :ref:`Profiling`.
-
-   Using :vlopt:`--prof-cfuncs` also enables :vlopt:`--prof-c`.
-
 .. option:: --prof-exec
 
    Enable collection of execution trace, that can be converted into a gantt
    chart with verilator_gantt See :ref:`Execution Profiling`.
-
-.. option:: --prof-pgo
-
-   Enable collection of profiling data for profile-guided
-   Verilation. Currently, this is only useful with :vlopt:`--threads`. See
-   :ref:`Thread PGO`.
 
 .. option:: --prof-threads
 
@@ -1686,13 +1390,7 @@ Summary:
 
 .. option:: --quiet
 
-   Alias for :vlopt:`--quiet-build` :vlopt:`--quiet-exit`
-   :vlopt:`--quiet-stats`.
-
-.. option:: --quiet-build
-
-   Disable printing build progress such as compiler command lines, when
-   using :vlopt:`--build`.
+   Alias for :vlopt:`--quiet-exit` :vlopt:`--quiet-stats`.
 
 .. option:: --quiet-exit
 
@@ -1710,15 +1408,6 @@ Summary:
    the path of the referencing file, instead of relative to the current
    directory.
 
-.. option:: --reloop-limit <value>
-
-   Rarely needed. Verilator attempts to turn some common sequences of
-   statements into loops in the output. This argument specifies the minimum
-   number of iterations the resulting loop needs to have to perform this
-   transformation. The default limit is 40. A smaller number may slightly
-   improve C++ compilation time on designs where these sequences are
-   common; however, the effect on model performance requires benchmarking.
-
 .. option:: --replication-limit <value>
 
    Set the limit for replication concatenation (e.g. {1024{1'b1}}). Also applies
@@ -1726,36 +1415,6 @@ Summary:
 
    This option is on by default with a value of 8k. To disable, pass with a
    value of 0.
-
-.. option:: --report-unoptflat
-
-   Enable extra diagnostics for :option:`UNOPTFLAT` warnings. This
-   includes, for each loop, the ten widest variables in the loop, and the
-   ten most fanned-out variables in the loop. These are candidates for
-   splitting into multiple variables to break the loop.
-
-   In addition, produces a GraphViz DOT file of the entire strongly
-   connected components within the source associated with each loop. This
-   is produced irrespective of whether :vlopt:`--dump-tree` is set. Such
-   graphs may help analyze the problem, but can be very large.
-
-   Various commands exist for viewing and manipulating DOT files, for
-   example, the "dot" command can convert a DOT file to a PDF for
-   printing. For example:
-
-   .. code-block:: bash
-
-        dot -Tpdf -O Vt_unoptflat_simple_2_35_unoptflat.dot
-
-   will generate a PDF :file:`Vt_unoptflat_simple_2_35_unoptflat.dot.pdf`
-   from the DOT file.
-
-   As an alternative, the :command:`xdot` command can be used to view DOT
-   files interactively:
-
-   .. code-block:: bash
-
-        xdot Vt_unoptflat_simple_2_35_unoptflat.dot
 
 .. option:: --rr
 
@@ -1791,10 +1450,8 @@ Summary:
      debug capabilities. To enable debug print messages at runtime, see
      :vlopt:`+verilator+debug`.
 
-   The :vlopt:`-CFLAGS` and/or :vlopt:`-LDFLAGS` options used here pass the
-   following argument into the generated Makefile for use as compiler or
-   linker options respectively. If you are using your own Makefiles, adapt
-   appropriately to pass the suggested flags to the compiler and linker.
+   The following argument is intended for the compiler or linker; this
+   lint-only build accepts and ignores it.
 
 .. option:: --savable
 
@@ -1892,35 +1549,7 @@ Summary:
    but may run in a multithreaded environment. With "--threads N",
    where N >= 2, the model is generated to run multithreaded on up to N
    threads. See :ref:`Multithreading`. This option also applies to
-   :vlopt:`--trace-vcd` (but not :vlopt:`--trace-fst`).
-
-.. option:: --threads-dpi <mode>
-
-   When using :vlopt:`--threads`, controls which DPI imported tasks and
-   functions are considered thread-safe.
-
-   With "--threads-dpi all",
-     Enable Verilator to assume all DPI imports are thread-safe, and to use
-     thread-local storage for communication with DPI, potentially improving
-     performance. Any DPI libraries need appropriate mutexes to avoid
-     undefined behavior.
-
-   With "--threads-dpi none",
-     Verilator assumes DPI imports are not thread-safe, and Verilator will
-     serialize calls to DPI imports by default, potentially harming
-     performance.
-
-   With "--threads-dpi pure", the default,
-     Verilator assumes DPI pure imports are thread-safe, but non-pure DPI
-     imports are not.
-
-   See also :vlopt:`--instr-count-dpi` option.
-
-.. option:: --threads-max-mtasks <value>
-
-   Rarely needed. When using :vlopt:`--threads`, specify the number of
-   mtasks the model is to be partitioned into. If unspecified, Verilator
-   approximates a good value.
+   `--trace-vcd` (but not `--trace-fst`).
 
 .. option:: --timescale <timeunit>/<timeprecision>
 
@@ -1962,15 +1591,8 @@ Summary:
 
 .. option:: --trace
 
-   Deprecated; use :vlopt:`--trace-fst`, :vlopt:`--trace-saif` or
-   :vlopt:`--trace-vcd` instead.
-
-   Using :vlopt:`--trace` without :vlopt:`--trace-fst` nor
-   :vlopt:`--trace-saif` requests VCD traces.
-
-   Using :vlopt:`--trace` :vlopt:`--trace-fst` requests FST traces.
-
-   Using :vlopt:`--trace` :vlopt:`--trace-saif` requests SAIF traces.
+   Accepted for compatibility. This lint-only build never emits a traced
+   model, so the option has no effect.
 
 .. option:: --trace-coverage
 
@@ -1993,40 +1615,9 @@ Summary:
    decrease visibility, but significantly improve simulation performance
    and trace file size.
 
-.. option:: --trace-fst
-
-   Enable FST waveform tracing in the model. This overrides
-   :vlopt:`--trace`.
-
-.. option:: --trace-max-array <depth>
-
-   Rarely needed. Specify the maximum array depth of a signal that may be
-   traced. Zero allows any width. Defaults to 32, as tracing large arrays
-   may greatly slow traced simulations.
-
-.. option:: --trace-max-width <width>
-
-   Rarely needed. Specify the maximum total bit width of a signal, across
-   all elements if an array, that may be traced. Zero allows any width.
-   Defaults to 4096, as tracing large vectors may greatly slow traced
-   simulations.
-
 .. option:: --no-trace-params
 
    Disable tracing of parameters.
-
-.. option:: --trace-saif
-
-   Enable SAIF tracing in the model. This overrides :vlopt:`--trace`.
-   Specification of this format can be found in `IEEE 1801-2018
-   <https://ieeexplore.ieee.org/document/8686430>`_ (see Annex I).
-
-.. option:: --trace-structs
-
-   Enable tracing to show the name of packed structure, union, and packed
-   array fields, rather than a single combined packed bus. Due to VCD file
-   format constraints, this may result in significantly slower trace times
-   and larger trace files.
 
 .. option:: --trace-threads <threads>
 
@@ -2036,7 +1627,7 @@ Summary:
 
    Enable waveform tracing using separate threads. This is typically faster
    in simulation runtime but uses more total compute. This option only
-   applies to :vlopt:`--trace-fst`. FST tracing can utilize at most
+   applies to `--trace-fst`. FST tracing can utilize at most
    "--trace-threads 2". This overrides :vlopt:`--no-threads`.
 
    This option is accepted, but has absolutely no effect with
@@ -2048,34 +1639,10 @@ Summary:
    Verilator adds to the design. The signals are still traced in the original
    verilog top modules.
 
-   When combined with :option:`--main-top-name` set to "-" or when the name of
+   When combined with `--main-top-name` set to "-" or when the name of
    the top module is set to "" in its constructor, the generated trace file
    will have the verilog top module as its root, rather than another module
    added by Verilator.
-
-.. option:: --trace-underscore
-
-   Enable tracing of signals or modules that start with an underscore.
-   Otherwise, these signals are not output during tracing. See also
-   :vlopt:`--coverage-underscore` option.
-
-.. option:: --trace-vcd
-
-   Adds waveform tracing code to the model using VCD format.
-
-   Verilator will generate additional :file:`<prefix>__Trace*.cpp` files
-   must be compiled. In addition :file:`verilated_vcd_sc.cpp` (for SystemC
-   traces) or :file:`verilated_vcd_c.cpp` (for both) must be compiled and
-   linked in. If using the Verilator-generated Makefiles, these files will
-   be added to the source file lists for you. If you are not using the
-   Verilator Makefiles, you will need to add these to your Makefile
-   manually.
-
-   Having tracing compiled in may result in small performance losses,
-   even when tracing is not turned on during model execution.
-
-   When using :vlopt:`--threads`, VCD tracing is parallelized, using the
-   same number of threads as passed to :vlopt:`--threads`.
 
 .. option:: -U<var>
 
@@ -2352,90 +1919,6 @@ Summary:
       values of clocks are set to 0 unless `--x-initial-edge` is
       specified. Initial values of all other state holding variables are
       controlled with `--x-initial`.
-
-.. option:: --x-initial <mode>
-
-   Controls the two-state value used to initialize variables that
-   are not otherwise initialized.
-
-   With "--x-initial 0",
-     initializes all otherwise uninitialized variables to zero.
-
-   With "--x-initial unique", the default, initializes variables using a
-     function, which determines the value to use for each initialization.
-     This gives the greatest flexibility and allows for finding reset bugs.
-     See :ref:`Unknown states`.
-
-     If using `--x-initial unique`, use the
-     :vlopt:`+verilator+rand+reset+2 <+verilator+rand+reset+\<value\>>`
-     runtime option, and seed the runtime random number generator such that
-     each regression test run gets a different randomization sequence with
-     :vlopt:`+verilator+seed+\<value\>`. You'll probably also want to print
-     any seeds selected, and code to enable rerunning with that same seed,
-     so you can reproduce bugs.
-
-   With "--x-initial fast", is best for performance, and initializes all
-     variables to a state Verilator determines is optimal. This may allow
-     further code optimizations, but will likely hide any code bugs
-     relating to missing resets.
-
-   .. note::
-
-      This option applies only to the initial values of variables. Initial
-      values of clocks are set to 0 unless :vlopt:`--x-initial-edge` is
-      specified.
-
-.. option:: --x-initial-edge
-
-   Enables emulation of event-driven simulators, which generally trigger an
-   edge on a transition from X to 1 (posedge) or X to 0 (negedge). Thus the
-   following code, where ``rst_n`` is uninitialized would set
-   ``res_n`` to ``1'b1`` when ``rst_n`` is first set to zero:
-
-   .. code-block:: sv
-
-        logic res_n = 1'b0;
-
-        always @(negedge rst_n) begin
-          if (rst_n == 1'b0) begin
-            res_n <= 1'b1;
-          end
-        end
-
-   In Verilator, by default, uninitialized clocks are given a value of
-   zero, so the above ``always`` block would not trigger.
-
-   While it is not good practice, some designs rely on X->0 triggering a
-   negedge, particularly in reset sequences. Using
-   :vlopt:`--x-initial-edge` will replicate this behavior. It will also
-   ensure that X->1 triggers a posedge.
-
-   .. note::
-
-      Using this option can affect convergence, and it may be necessary to
-      use :vlopt:`--converge-limit` to increase the number of convergence
-      iterations. This may be another indication of problems with the
-      modeled design that should be addressed.
-
-   Instead of using this option, one technique is to explicitly create the
-   appropriate edge by creating a value at construction, and a value in an
-   initial block at time zero:
-
-   .. code-block:: sv
-
-        logic rst_n = 1;  // value at construction
-
-        initial begin
-          rst_n = 0;  // value at time zero
-          // ... rest
-        end
-
-        always @(negedge rst_n) begin
-          if (rst_n == 1'b0) begin
-            res_n <= 1'b1;
-          end
-        end
-
 
 .. option:: --xml-only
 

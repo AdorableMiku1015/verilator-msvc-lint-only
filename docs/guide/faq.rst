@@ -130,7 +130,8 @@ How do I generate waveforms (traces) in C++?
 
 See also the next question for tracing in SystemC mode.
 
-A. Pass the :vlopt:`--trace-vcd` option to Verilator. Then you may use
+A. Upstream Verilator needs a trace option for this; this lint-only build
+   emits no model to trace. Then you may use
    ``$dumpfile`` and ``$dumpvars`` to enable traces, the same as with any
    Verilog simulator, although Verilator ignores the arguments to
    ``$dumpvars``. See ``examples/make_tracing_c`` in the distribution.
@@ -178,7 +179,7 @@ the same trace file if you want all data to land in the same output file.
 How do I generate waveforms (traces) in SystemC?
 """"""""""""""""""""""""""""""""""""""""""""""""
 
-A. Pass the :vlopt:`--trace-vcd` option to Verilator, and in your top-level
+A. Upstream Verilator needs a trace option for this, and in your top-level
    ``sc_main()``, call ``Verilated::traceEverOn(true)``. Then you may use
    ``$dumpfile`` and code:`$dumpvars` to enable traces, as with any Verilog
    simulator; see the non-SystemC example in
@@ -226,9 +227,8 @@ trace file if you want all data to land in the same output file.
 How do I generate FST waveforms (traces) in C++ or SystemC?
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
-FST is a trace file format developed by GTKWave. Verilator provides basic
-FST support. To dump traces in FST format, add the :vlopt:`--trace-fst`
-option to Verilator and either:
+FST is a trace file format developed by GTKWave. This lint-only build never
+emits a traced model, so trace files cannot be produced.
 
 Use ``$dumpfile & $dumpvars`` in Verilog as described in the VCD example
 above,
@@ -387,8 +387,7 @@ How do I get faster build times?
 
 - When running make, pass the make variable VM_PARALLEL_BUILDS=1, so that
   builds occur in parallel. Note this is now set by default if an output
-  file is large enough to be split due to the :vlopt:`--output-split`
-  option.
+  file is large enough to be split into multiple output files.
 
 - Verilator emits any infrequently executed "cold" routines into separate
   __Slow.cpp files. This can accelerate compilation as optimization can be
@@ -402,7 +401,7 @@ How do I get faster build times?
   between identical source builds, even across different users. If ccache
   was installed when Verilator was built, it is used, or see OBJCACHE
   environment variable to override this. Also see the
-  :vlopt:`--output-split` option and :ref: `Profiling ccache efficiency`.
+  output splitting and :ref: `Profiling ccache efficiency`.
 
 - To reduce the compile time of classes that use a Verilated module (e.g.,
   a top CPP file) you may wish to add a

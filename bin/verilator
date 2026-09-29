@@ -220,9 +220,14 @@ sub verilator_bin {
                     || ($Debug ? "verilator_bin_dbg" : "verilator_bin"));
     if (-x "$RealBin/$basename" || -x "$RealBin/$basename.exe") {
         return "$RealBin/$basename";
-    } else {
-        return $basename;  # Find in PATH
     }
+    # A release-only install has no verilator_bin_dbg. The release binary still
+    # honors the debug switches, so prefer it over failing to exec.
+    if (!$ENV{VERILATOR_BIN} && $Debug
+        && (-x "$RealBin/verilator_bin" || -x "$RealBin/verilator_bin.exe")) {
+        return "$RealBin/verilator_bin";
+    }
+    return $basename;  # Find in PATH
 }
 
 #######################################################################
@@ -267,6 +272,9 @@ sub aslr {
 
 sub ulimit_stack_unlimited {
     return "" if !$opt_unlimited_stack;
+    # Windows has neither ulimit nor exec in the shell run() uses, and a stack
+    # limit is not needed there
+    return "" if $^O =~ /^(MSWin32|msys|cygwin)$/;
     my $limit = "unlimited";
     # AddressSanitizer doesn't work with 'ulimit -s unlimted'
     if (`${\(verilator_bin())} --get-supported DEV_ASAN` eq "1\n") {
@@ -409,11 +417,7 @@ detailed descriptions of these arguments.
     --build-dep-bin <filename>  Override build dependency Verilator binary
     --build-jobs <jobs>         Parallelism for --build
     --cc                        Create C++ output
-     -CFLAGS <flags>            C++ compiler arguments for makefile
-    --compiler <compiler-name>  Tune for specified C++ compiler
-    --compiler-include          Include additional header in the precompiled one
     --constraint-array-limit <size>   Maximum array size for constraint array reduction
-    --converge-limit <loops>    Tune convergence settle time
     --coverage                  Enable all coverage
     --coverage-expr             Enable expression coverage
     --coverage-expr-max <value>     Maximum permutations allowed for an expression
@@ -422,7 +426,6 @@ detailed descriptions of these arguments.
     --coverage-max-bins <value>        Maximum bins of an integral coverpoint bins declaration
     --coverage-max-real-bins <value>   Maximum bins of a real coverpoint bins declaration
     --coverage-max-width <width>   Maximum array depth for coverage
-    --coverage-per-instance     Enable per-instance coverage counters
     --coverage-toggle           Enable toggle coverage
     --coverage-underscore       Enable coverage of _signals
     --coverage-user             Enable SVL user coverage
@@ -487,8 +490,6 @@ detailed descriptions of these arguments.
      -I<dir>                    Directory to search for includes
     --if-depth <value>          Tune IFDEPTH warning
      +incdir+<dir>              Directory to search for includes
-    --inline-cfuncs <value>     Inline CFuncs with <=value nodes (0=off)
-    --inline-cfuncs-product <value>  Inline CFuncs if size*calls <= value
     --inline-mult <value>       Tune module inlining
     --instr-count-dpi <value>   Assumed dynamic instruction count of DPI imports
      -j <jobs>                  Parallelism for --build-jobs/--verilate-jobs
@@ -499,21 +500,15 @@ detailed descriptions of these arguments.
     --json-only-output <filename>       Set .tree.json output filename
     --l2-name <value>           Verilog scope name of the top module
     --language <lang>           Default language standard to parse
-     -LDFLAGS <flags>           Linker pre-object arguments for makefile
      -libmap                    Specify library mapping file
     --lib-create <name>         Create a DPI library
      +libext+<ext>+[ext]...     Extensions for finding modules
      +librescan                 Ignored for compatibility
     --lint-fast                 Lint only, skipping model generation passes
     --lint-only                 Lint, but do not make output
-    --localize-max-size <value>  Tune localize optimization variable size
     --main                      Generate C++ main() file
-    --main-top-name             Specify top name passed to Verilated model in generated C++ main
-    --make <build-tool>         Generate scripts for specified build tool
-     -MAKEFLAGS <flags>         Arguments to pass to make during --build
     --max-num-width <value>     Maximum number width (default: 64K)
     --Mdir <directory>          Name of output object directory
-    --MMD                       Create .d dependency files
     --mod-prefix <topname>      Name to prepend to lower classes
     --MP                        Create phony dependency targets
      +notimingchecks            Ignored
@@ -523,10 +518,6 @@ detailed descriptions of these arguments.
      -O2                        Stronger optimizations
      -O3                        High-performance optimizations
      -O<optimization-letter>    Selectable optimizations
-    --output-groups <numfiles>  Group .cpp files into larger ones
-    --output-split <statements>          Split .cpp files into pieces
-    --output-split-cfuncs <statements>   Split model functions
-    --output-split-ctrace <statements>   Split tracing functions
      -P                         Disable line numbers and blanks with -E
     --pins-bv <bits>            Specify types for top-level ports
     --pins-inout-enables        Specify that __en and __out signals be created for inouts
@@ -542,10 +533,7 @@ detailed descriptions of these arguments.
     --preproc-resolve           Include all found modules in the output with -E
     --preproc-token-limit       Maximum tokens on a line allowed by preprocessor
     --private                   Debugging; see docs
-    --prof-c                    Compile C++ code with profiling
-    --prof-cfuncs               Name functions for profiling
     --prof-exec                 Enable generating execution profile for gantt chart
-    --prof-pgo                  Enable generating profiling data for PGO
     --protect-ids               Hash identifier names for obscurity
     --protect-key <key>         Key for symbol protection
     --protect-lib <name>        Create a DPI protected library
@@ -556,13 +544,10 @@ detailed descriptions of these arguments.
     --public-params             Mark all parameters as public_flat
      -pvalue+<name>=<value>     Overwrite toplevel parameter
     --quiet                     Minimize additional printing
-    --quiet-build               Don't print build progress
     --quiet-exit                Don't print the command on failure
     --quiet-stats               Don't print statistics
     --relative-includes         Resolve includes relative to current file
-    --reloop-limit <value>      Minimum iterations for forming loops
     --replication-limit <value> Replication concatenation limit (default: 8k)
-    --report-unoptflat          Extra diagnostics for UNOPTFLAT
     --rr                        Run Verilator and record with rr
     --runtime-debug             Enable model runtime debugging
     --savable                   Enable model save-restore
@@ -578,8 +563,6 @@ detailed descriptions of these arguments.
      -sv                        Enable SystemVerilog parsing
      +systemverilogext+<ext>    Synonym for +1800-2023ext+<ext>
     --threads <threads>         Enable multithreading
-    --threads-dpi <mode>        Enable multithreaded DPI
-    --threads-max-mtasks <mtasks>  Tune maximum mtask partitioning
     --timescale <timescale>     Sets default timescale
     --timescale-override <timescale>  Overrides all timescales
     --timing                    Enable timing support
@@ -589,15 +572,8 @@ detailed descriptions of these arguments.
     --trace                     Enable VCD waveform creation
     --trace-coverage            Enable tracing of coverage
     --trace-depth <levels>      Depth of tracing
-    --trace-fst                 Enable FST waveform creation
-    --trace-max-array <depth>   Maximum array depth for tracing
-    --trace-max-width <width>   Maximum bit width for tracing
     --trace-params              Enable tracing of parameters
-    --trace-saif                Enable SAIF file creation
-    --trace-structs             Enable tracing structure names
     --no-trace-top              Do not emit traces for signals in the top module generated by verilator
-    --trace-underscore          Enable tracing of _signals
-    --trace-vcd                 Enable VCD waveform creation
      -U<var>                    Undefine preprocessor define
     --no-unlimited-stack        Don't disable stack size limit
     --unroll-count <loops>      Tune maximum loop iterations
@@ -629,8 +605,6 @@ detailed descriptions of these arguments.
      -Wwarn-lint                Enable lint warning message
      -Wwarn-style               Enable style warning message
     --x-assign <mode>           Assign non-initial Xs to this value
-    --x-initial <mode>          Assign initial Xs to this value
-    --x-initial-edge            Enable initial X->0 and X->1 edge triggers
      -y <dir>                   Directory to search for modules
      -yr <dir>                  Directory to search for modules, recursively
 

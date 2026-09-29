@@ -20,6 +20,7 @@ EXEMPT_COPYRIGHT_RE = r'(^\.|/\.|\.gitignore$|\.dat|\.gprof|\.mem|\.out$|\.png$|
 
 EXEMPT_COPYRIGHT_FILES = """
     CITATION.cff
+    CMakePresets.json
     CPPLINT.cfg
     LICENSE
     LICENSES/

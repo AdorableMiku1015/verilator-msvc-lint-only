@@ -1,0 +1,32 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 21,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "win64-release",
+      "displayName": "Windows x64, MSVC + Ninja, Release",
+      "description": "MSVC x64 + Ninja Release build of verilator_bin.exe. Run cmake from a Visual Studio x64 developer prompt (vcvars64.bat), otherwise cl.exe is not found and INCLUDE/LIB are unset. flex/bison come from MSYS2; point WIN_FLEX_BISON, FLEX_EXECUTABLE, BISON_EXECUTABLE and FLEX_INCLUDE_DIR elsewhere to use winflexbison instead.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build",
+      "environment": {
+        "WIN_FLEX_BISON": "C:/msys64/usr"
+      },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "BISON_EXECUTABLE": "C:/msys64/usr/bin/bison.exe",
+        "FLEX_EXECUTABLE": "C:/msys64/usr/bin/flex.exe",
+        "FLEX_INCLUDE_DIR": "C:/msys64/usr/include"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "win64-release",
+      "configurePreset": "win64-release"
+    }
+  ]
+}

@@ -1230,16 +1230,11 @@ class VlTest:
             verilator_flags += ["--gdbbt"]
         if Args.rr:
             verilator_flags += ["--rr"]
-        if Args.trace:
-            verilator_flags += ["--trace-vcd"]
-        if Args.gdbsim or Args.rrsim:
-            verilator_flags += ["-CFLAGS -ggdb -LDFLAGS -ggdb"]
-        if self.tsan:
-            verilator_flags += ["-CFLAGS -fsanitize=thread -CFLAGS -g -LDFLAGS -fsanitize=thread"]
+        # --trace-vcd, -CFLAGS/-LDFLAGS and --debug-partition belonged to the
+        # generated model, which this build does not produce, so the harness
+        # flags that used to add them add nothing
         verilator_flags += ["--x-assign unique"]  # More likely to be buggy
 
-        if param['vltmt']:
-            verilator_flags += ["--debug-partition"]
         if param['threads'] >= 0:
             verilator_flags += ["--threads", str(param['threads'])]
         if param['make_main'] and param['verilator_make_gmake']:
@@ -2633,7 +2628,6 @@ class VlTest:
                 # directory; report the latter, which the goldens use
                 line = re.sub(r'[A-Za-z]:[\\/](?:[^\\/: ]+[\\/])*src[\\/]([^\\/:]+\.(?:cpp|h))',
                               r'../\1', line)
-                line = re.sub(r' \/[^ ]+\/verilated_std.sv', ' verilated_std.sv', line)
                 line = re.sub(r'(With current working directory \')[^\']+\'', r"\1...'", line)
                 #
                 (line, n) = re.subn(r'Exiting due to.*', r"Exiting due to", line)

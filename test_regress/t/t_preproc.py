@@ -51,11 +51,10 @@ def preproc_check(filename1, filename2):
 
 stdout_filename = test.obj_dir + "/" + test.name + "__test.vpp"
 
-test.compile(verilator_flags2=['-DDEF_A0 -DPREDEF_COMMAND_LINE -E'],
-             verilator_make_gmake=False,
-             make_top_shell=False,
-             make_main=False,
-             stdout_filename=stdout_filename)
+# -E is preprocess-only, so this needs no generated model; use the linter entry
+# point, which does not add --cc
+test.lint(verilator_flags2=['-DDEF_A0 -DPREDEF_COMMAND_LINE -E'],
+          stdout_filename=stdout_filename)
 
 preproc_check(test.top_filename, stdout_filename)
 test.files_identical(stdout_filename, test.golden_filename)

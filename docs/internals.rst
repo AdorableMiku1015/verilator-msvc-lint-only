@@ -2038,7 +2038,7 @@ use byte-to-byte comparisons of AST dumps in tests.
 
    {"files": {
      /* Map id to filename, and other metadata */
-     "d": {"filename":"/home/ant/tmp/verilator/include/verilated_std.sv", "realpath":"/home/ant/tmp/verilator/include/verilated_std.sv", "language":"1800-2023"},
+     "d": {"filename":"<verilated_std>", "realpath":"<verilated_std>", "language":"1800-2023"},
      "a": {"filename":"<built-in>", "realpath":"<built-in>", "language":"1800-2023"},
      "b": {"filename":"<command-line>", "realpath":"<command-line>", "language":"1800-2023"},
      "c": {"filename":"input.vc", "realpath":"/home/ant/tmp/verilator/test_regress/input.vc", "language":"1800-2023"},

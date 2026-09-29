@@ -89,7 +89,11 @@ void V3Os::setenvStr(const string& envvar, const string& value, const string& wh
 //######################################################################
 // Generic filename utilities
 
-static constexpr char V3OS_SLASH = '\\';
+// Paths built by Verilator are spelled with forward slashes even on Windows:
+// the tools it runs accept them, the diagnostics then read the same on every
+// platform, and backslashes stay available to the messages that mean them
+// literally (Verilog escapes, escaped identifiers, waiver globs).
+static constexpr char V3OS_SLASH = '/';
 
 static bool isSlash(char ch) VL_PURE { return ch == '/' || ch == '\\'; }
 

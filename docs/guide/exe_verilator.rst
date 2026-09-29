@@ -889,6 +889,14 @@ Summary:
 
    Disables four-state logic support which is the default. Exists for forward compatibility.
 
+.. option:: -Fs <file>
+
+   Same as :vlopt:`-F` option, except that when the specified file does not
+   exist it is silently ignored instead of causing an error. Any other
+   unusable path, such as one that exists but cannot be read, is still
+   reported. Use this for argument files that are optional, such as a
+   project-local argument file that only some users have.
+
 .. option:: --fslice-element-limit
 
    Rarely needed. Set the maximum array size (number of elements) for slice

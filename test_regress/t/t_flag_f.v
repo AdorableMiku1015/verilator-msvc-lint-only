@@ -31,6 +31,10 @@ module t;
     $write("%%Error: NO GOT_DEF6\n");
     $stop;
 `endif
+`ifndef GOT_DEF7
+    $write("%%Error: NO GOT_DEF7\n");
+    $stop;
+`endif
 `ifdef NON_DEF
     $write("%%Error: NON_DEF\n");
     $stop;

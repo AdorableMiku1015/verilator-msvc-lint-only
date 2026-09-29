@@ -36,6 +36,7 @@
 #endif
 #include <algorithm>
 #include <cctype>
+#include <cerrno>
 #ifdef _MSC_VER
 # include <filesystem> // C++17
 # define S_ISDIR(mode) (((mode) & _S_IFMT) == _S_IFDIR)
@@ -53,7 +54,9 @@
 #include "config_rev.h"
 
 #if defined(_WIN32) || defined(__MINGW32__)
-# include <io.h>  // open, close
+# include <io.h>  // open, close, access
+#else
+# include <unistd.h>  // access
 #endif
 // clang-format on
 
@@ -573,6 +576,20 @@ bool V3Options::fileStatNormal(const string& filename) {
     return true;
 }
 
+bool V3Options::fileIsAbsent(const string& filename) {
+    // Existence only, so a file that exists but cannot be read is not absent:
+    // the MSVC runtime fails stat() for such a file, while access() reports it.
+    // A probe failing for any other reason (no search permission on a parent
+    // directory, a non-directory path component, a symbolic link loop) means the
+    // path is unusable rather than absent, and is reported as -F would report it.
+#ifdef _WIN32
+    const bool missing = _access(filename.c_str(), 0) != 0;  // 0 is F_OK
+#else
+    const bool missing = access(filename.c_str(), F_OK) != 0;
+#endif
+    return missing && errno == ENOENT;
+}
+
 string V3Options::fileExists(const string& filename) {
     // Surprisingly, for some other simulators, this process
     // is quite slow; presumably because of re-reading each directory
@@ -639,6 +656,7 @@ int V3Options::stripOptionsForChildRun(const string& opt, bool forTop) {
         {"lib-create", 2},
         {"f", 2},
         {"F", 2},
+        {"Fs", 2},
         {"v", 2},
         {"l2-name", 2},
         {"mod-prefix", 2},
@@ -1500,6 +1518,15 @@ void V3Options::parseOptsList(FileLine* fl, const string& optdir, int argc,
     }).notForRerun();
     DECL_OPTION("-FI", CbVal,
                 [this, &optdir](const char* valp) { addForceInc(parseFileArg(optdir, valp)); });
+    // Same as -F, except a file that does not exist is ignored rather than an error
+    DECL_OPTION("-Fs", CbVal, [this, fl, &optdir](const char* valp) VL_MT_DISABLED {
+        const string filename = parseFileArg(optdir, valp);
+        if (fileIsAbsent(filename)) {
+            UINFO(1, "Ignoring missing -Fs command file: " << filename);
+            return;
+        }
+        parseOptsFile(fl, filename, true);
+    }).notForRerun();
     DECL_OPTION("-f", CbVal, [this, fl, &optdir](const char* valp) VL_MT_DISABLED {
         parseOptsFile(fl, parseFileArg(optdir, valp), false);
     }).notForRerun();
@@ -2087,8 +2114,9 @@ void V3Options::parseOptsList(FileLine* fl, const string& optdir, int argc,
                 }
             }
             UASSERT(consumed, "Failed to consume argument: " << argv[i]);
-            // Record all arguments except for -f and -F (their contents will be recorded instead)
-            if (argName != "f" && argName != "F") addArg(argv + i, consumed, isForRerun);
+            // Record all arguments except for -f/-F/-Fs (their contents will be recorded instead)
+            if (argName != "f" && argName != "F" && argName != "Fs")
+                addArg(argv + i, consumed, isForRerun);
             i += consumed;
             continue;
         }

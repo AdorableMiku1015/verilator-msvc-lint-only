@@ -11,7 +11,13 @@ import vltest_bootstrap
 
 test.scenarios('vlt')
 
-test.compile(v_flags2=["-f t/t_flag_f.vc"])
+test.compile(v_flags2=[
+    "-f t/t_flag_f.vc",
+    # -Fs reads its file like -F, but ignores it when it does not exist;
+    # t_flag_fs_absent.vc is intentionally not present in the tree
+    "-Fs t/t_flag_fs.vc",
+    "-Fs t/t_flag_fs_absent.vc",
+])
 
 test.execute()
 

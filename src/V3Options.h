@@ -846,6 +846,7 @@ public:
     string filePathLookedMsg(FileLine* fl, const string& modname);
     V3LangCode fileLanguage(const string& filename);
     static bool fileStatNormal(const string& filename);
+    static bool fileIsAbsent(const string& filename);
 
     // METHODS (other OS)
     static void throwSigsegv();

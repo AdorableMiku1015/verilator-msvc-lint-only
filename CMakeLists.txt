@@ -150,6 +150,20 @@ set(PACKAGE_VERSION ${PROJECT_VERSION})
 set(CXX ${CMAKE_CXX_COMPILER})
 set(AR ${CMAKE_AR})
 
+# Compiler option that reads a precompiled header, and the compiler's
+# precompiled header filename suffix. Mirrors the probe in configure.ac.
+# include/verilated.mk needs these to compile the fast/slow objects of a split
+# model; leaving them empty puts a bare header name on the compile line.
+if(NOT MSVC)
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        set(CFG_CXXFLAGS_PCH_I "-include-pch")
+        set(CFG_GCH_IF_CLANG ".gch")
+    else()
+        set(CFG_CXXFLAGS_PCH_I "-include")
+        set(CFG_GCH_IF_CLANG "")
+    endif()
+endif()
+
 configure_file(include/verilated_config.h.in include/verilated_config.h @ONLY)
 configure_file(include/verilated.mk.in include/verilated.mk @ONLY)
 

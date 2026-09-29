@@ -10,6 +10,15 @@ Installation
 
 This section discusses how to install Verilator.
 
+.. note::
+
+   This is a lint-only fork that builds only on Windows x64 with the MSVC
+   toolchain and CMake. Build it with ``cmake --preset win64-release`` followed
+   by ``cmake --build --preset win64-release``, from a Visual Studio x64
+   developer prompt. The rest of this page describes the upstream build, which
+   uses autoconf and GNU make and is not available here; it is kept for
+   reference on the options Verilator accepts.
+
 .. _package manager quick install:
 
 Package Manager Quick Install

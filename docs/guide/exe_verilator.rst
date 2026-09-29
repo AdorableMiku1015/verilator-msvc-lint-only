@@ -8,6 +8,18 @@ verilator Arguments
 
 The following arguments may be passed to the "verilator" executable.
 
+.. note::
+
+   This is a lint-only build of Verilator. It parses, elaborates and lints
+   SystemVerilog, and stops before the passes that build a schedulable C++
+   model. :vlopt:`--lint-only` is therefore implied, and the options that
+   select a model output are rejected rather than silently ignored:
+   :vlopt:`--cc`, :vlopt:`--sc`, :vlopt:`--dpi-hdr-only`,
+   :vlopt:`--build`, :vlopt:`--binary`, :vlopt:`--exe`, :vlopt:`--main`,
+   :vlopt:`--lib-create` and :vlopt:`--hierarchical`. Diagnostics that can
+   only be computed while building the model, notably
+   :vlopt:`UNOPTFLAT`, are not reported either.
+
 Summary:
 
    .. include:: ../_build/gen/args_verilator.rst
@@ -1213,6 +1225,9 @@ Summary:
 
    Check the files for lint violations only, do not create any other
    output.
+
+   In this build linting is the only thing Verilator does, so this option
+   is accepted for compatibility and is implied.
 
    You may also want the :vlopt:`-Wall` option to enable messages
    considered stylistic and not enabled by default.
@@ -2448,7 +2463,7 @@ Summary:
 
 .. option:: -yr <dir>
 
-   Same as :vlopt:`-y <dir>`, except that every subdirectory is searched as
-   well, recursively to any depth. Use this when a module library is
+   Same as :vlopt:`-y \<dir\> <-y>`, except that every subdirectory is searched
+   as well, recursively to any depth. Use this when a module library is
    organized in a directory hierarchy rather than a single flat directory,
-   so that each level does not need its own :vlopt:`-y <dir>`.
+   so that each level does not need its own :vlopt:`-y \<dir\> <-y>`.

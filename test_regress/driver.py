@@ -150,7 +150,10 @@ class VtOs:
     @staticmethod
     def run_capture(command: str, check=True) -> str:
         """Run a command and return results"""
-        proc = subprocess.run([command], capture_output=True, text=True, shell=True, check=False)
+        # A plain string, not a one element list: on Windows a list argument
+        # with shell=True bypasses the shell and tries to exec the whole
+        # command line as a program name.
+        proc = subprocess.run(command, capture_output=True, text=True, shell=True, check=False)
         if check and proc.returncode:
             sys.exit("%Error: command failed '" + command + "':\n" + proc.stderr + proc.stdout)
         return str(proc.stdout)

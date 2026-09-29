@@ -16,10 +16,6 @@ n = 0
 for prog in [
         # See also t_flag_help.py
         os.environ["VERILATOR_ROOT"] + "/bin/verilator",
-        os.environ["VERILATOR_ROOT"] + "/bin/verilator_coverage",
-        #os.environ["VERILATOR_ROOT"] + "/bin/verilator_difftree",
-        #os.environ["VERILATOR_ROOT"] + "/bin/verilator_gantt",
-        #os.environ["VERILATOR_ROOT"] + "/bin/verilator_profcfunc",
 ]:
     n += 1
     log_filename = test.obj_dir + "/vlt_" + str(n) + ".log"

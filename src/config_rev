@@ -21,12 +21,21 @@ import sys
 from datetime import datetime, timezone
 
 
+def git_output(*args: str) -> str:
+    # git may be missing, or the sources may not be a git checkout (e.g. a
+    # distribution tarball); degrade to the build-time stamp rather than failing
+    try:
+        return subprocess.check_output(['git', *args], encoding='utf-8', errors='replace')
+    except (OSError, subprocess.CalledProcessError):
+        return ''
+
+
 def get_rev() -> str:
     if 'VERILATOR_SRC_VERSION' in os.environ:
         # e.g. Ubuntu package build
         return os.environ['VERILATOR_SRC_VERSION']
 
-    data = subprocess.check_output(['git', 'describe', '--always'], encoding='utf-8', errors='replace')
+    data = git_output('describe', '--always')
 
     if 'SOURCE_DATE_EPOCH' in os.environ:
         # e.g. Package builds that don't set VERILATOR_SRC_VERSION
@@ -46,7 +55,7 @@ def get_rev() -> str:
         if m:
             result += "-" + m.group(1)
 
-    data = subprocess.check_output(['git', 'status'], encoding='utf-8', errors='replace')
+    data = git_output('status')
     if (re.search('Changed but not updated', data, flags=re.IGNORECASE)
             or re.search('Changes to be committed', data, flags=re.IGNORECASE)
             or re.search('Changes not staged', data, flags=re.IGNORECASE)):

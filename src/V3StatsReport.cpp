@@ -258,13 +258,11 @@ void V3Stats::summaryReport() {
 
     std::cout << std::setprecision(3) << std::fixed;
     const double sourceCharsMB = V3Stats::getStatSumQ(STAT_SOURCE_CHARS) / 1024.0 / 1024.0;
-    const double cppCharsMB = V3Stats::getStatSumQ(STAT_CPP_CHARS) / 1024.0 / 1024.0;
     const uint64_t sourceModules = V3Stats::getStatSumQ(STAT_SOURCE_MODULES);
-    const uint64_t cppFiles = V3Stats::getStatSumQ(STAT_CPP_FILES);
-    const double modelMB = V3Stats::getStatSum(STAT_MODEL_SIZE) / 1024.0 / 1024.0;
-    std::cout << "- Verilator: Built from " << sourceCharsMB << " MB sources in " << sourceModules
-              << " modules, into " << cppCharsMB << " MB in " << cppFiles << " C++ files needing "
-              << modelMB << " MB\n";
+    // No C++ is emitted, so the generated model size is always zero and is not
+    // worth reporting.
+    std::cout << "- Verilator: Linted " << sourceCharsMB << " MB sources in " << sourceModules
+              << " modules\n";
 
     const double walltime = V3Stats::getStatSum(STAT_WALLTIME);
     const double walltimeElab = V3Stats::getStatSum(STAT_WALLTIME_ELAB);

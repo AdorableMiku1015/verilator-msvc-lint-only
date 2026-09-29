@@ -12,6 +12,9 @@ import vltest_bootstrap
 test.scenarios('vlt')
 test.top_filename = "t/t_lint_incabspath.v"
 
+if os.name == 'nt':
+    test.skip("Include of /dev/null needs a POSIX system")
+
 test.lint(verilator_flags2=["-Wall -Wno-DECLFILENAME"],
           fails=True,
           expect_filename=test.golden_filename)

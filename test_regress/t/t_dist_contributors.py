@@ -40,8 +40,9 @@ def read_user():
 
 
 def read_authors():
-    # Check recent commits in case did commit
-    cmd = "git log '--pretty=format:%aN <%aE>' | head -5"
+    # Check recent commits in case did commit. Use %aN without the e-mail in
+    # angle brackets, which the Windows shell would treat as redirection.
+    cmd = "git log -n 5 --pretty=format:%aN"
     git_auths = test.run_capture(cmd)
     for line in git_auths.splitlines():
         line = re.sub(r' *<[^>]*>', '', line)

@@ -11,6 +11,9 @@ import vltest_bootstrap
 
 test.scenarios('vlt')
 
+if os.name == 'nt':
+    test.skip("Include of /dev/null needs a POSIX system")
+
 test.lint()
 
 test.passes()

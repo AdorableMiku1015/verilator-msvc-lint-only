@@ -148,11 +148,28 @@ class VtOs:
             VtOs.system('/bin/mv ' + src + ' ' + dst)
 
     @staticmethod
+    def posixify_command(command: str) -> str:
+        """Adapt a command line written for a POSIX shell to this platform"""
+        if os.sep == '/':
+            return command
+        # Commands are written for a POSIX shell and the golden files record
+        # POSIX-style paths. Windows accepts forward slashes everywhere the
+        # native tools are invoked, so normalize rather than teach every call
+        # site about the platform.
+        command = command.replace('\\', '/')
+        # bin/verilator is a Perl script; the Windows shell cannot run it by its
+        # shebang, so run it through the interpreter.
+        command = re.sub(r'(^|[&;]\s*|\|\|\s*)(\S*/bin/verilator)(?=\s|$)',
+                         r'\1perl \2', command)
+        return command
+
+    @staticmethod
     def run_capture(command: str, check=True) -> str:
         """Run a command and return results"""
         # A plain string, not a one element list: on Windows a list argument
         # with shell=True bypasses the shell and tries to exec the whole
         # command line as a program name.
+        command = VtOs.posixify_command(command)
         proc = subprocess.run(command, capture_output=True, text=True, shell=True, check=False)
         if check and proc.returncode:
             sys.exit("%Error: command failed '" + command + "':\n" + proc.stderr + proc.stdout)
@@ -821,7 +838,7 @@ class VlTest:
             self.v_flags += ["-f input.xsim.vc"]
         elif os.path.exists('input.vc'):
             self.v_flags += ["-f input.vc"]
-        if not re.search(r'/test_regress', self.t_dir):  # Don't include standard dir, only site's
+        if not re.search(r'[\\/]test_regress', self.t_dir):  # Don't include standard dir, only site's
             self.v_flags += ["+incdir+" + self.t_dir + " -y " + self.t_dir]
         self.v_flags += [define_opt + "TEST_OBJ_DIR=" + self.obj_dir]
         if Args.verbose:
@@ -1962,12 +1979,7 @@ class VlTest:
             print('run(cmd=' + pformat(cmd))
         command = ' '.join(cmd)
 
-        if os.sep != '/':
-            # Commands are written for a POSIX shell and the golden files record
-            # POSIX-style paths. Windows accepts forward slashes everywhere the
-            # native tools are invoked, so normalize rather than teach every
-            # call site about the platform.
-            command = command.replace('\\', '/')
+        command = VtOs.posixify_command(command)
 
         if aslr_off and aslr_off != "":
             prefix = self.aslr_off
@@ -2116,10 +2128,11 @@ class VlTest:
 
     def _run_output(self, data, logfh, tee):
         if os.sep != '/':
-            # Windows tools write CRLF line endings and native backslash paths;
-            # the golden files are shared with the POSIX runs, so normalize the
-            # captured stream the same way the command line is normalized.
-            data = data.replace(b'\r', b'').replace(b'\\', b'/')
+            # Windows tools write CRLF line endings; the golden files are shared
+            # with the POSIX runs. Leave backslashes alone: they belong to the
+            # messages under test (Verilog escapes, escaped identifiers, globs),
+            # and paths are normalized where commands are built instead.
+            data = data.replace(b'\r', b'')
         if re.search(r'--debug-exit-.*: Exiting', str(data)):
             self._force_pass = True
             print("EXIT: " + str(data))
@@ -2615,6 +2628,11 @@ class VlTest:
                 # Avoid absolute paths
                 line = re.sub(r'%Error: /[^: ]+/([^/:])', r'%Error: .../\1', line)
                 line = re.sub(r'("file://)/[^: ]+/([^/:])', r'\1/.../\2', line)
+                # CMake records absolute source paths in __FILE__, where the
+                # autoconf build recorded paths relative to the object
+                # directory; report the latter, which the goldens use
+                line = re.sub(r'[A-Za-z]:[\\/](?:[^\\/: ]+[\\/])*src[\\/]([^\\/:]+\.(?:cpp|h))',
+                              r'../\1', line)
                 line = re.sub(r' \/[^ ]+\/verilated_std.sv', ' verilated_std.sv', line)
                 line = re.sub(r'(With current working directory \')[^\']+\'', r"\1...'", line)
                 #

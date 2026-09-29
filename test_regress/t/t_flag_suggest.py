@@ -36,8 +36,11 @@ opts += ["-Wno-SPLITVER"]
 opts += ["-language 1364-1997"]
 
 cmd = ""
-for var in opts:
-    cmd += os.environ["VERILATOR_ROOT"] + "/bin/verilator " + var + "; "
+# Separator that runs every command whatever the previous one returned, so the
+# log holds one suggestion per typo on both the POSIX shell and cmd.exe. No
+# trailing separator: an empty trailing command would hide the failed status.
+sep = " & " if os.name == 'nt' else "; "
+cmd = sep.join(os.environ["VERILATOR_ROOT"] + "/bin/verilator " + var for var in opts)
 
 test.run(cmd=[cmd],
          verilator_run=True,

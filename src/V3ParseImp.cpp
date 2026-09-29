@@ -422,7 +422,12 @@ void V3ParseImp::parseText(FileLine* fileline, const string& text, const string&
 }
 
 void V3ParseImp::parsePreprocessed(const string& modfilename, const string& nondirname) {
-    if (v3Global.opt.preprocOnly() || v3Global.opt.keepTempFiles()) {
+    // The built-in sources are compiled into the binary, so they are named
+    // <verilated_std> and friends; those names have no file their temporary
+    // output could be written to. -E still prints them, as it prints any input.
+    const bool builtinSource = modfilename == V3Options::getStdPackagePath()
+                               || modfilename == V3Options::getStdWaiverPath();
+    if (v3Global.opt.preprocOnly() || (v3Global.opt.keepTempFiles() && !builtinSource)) {
         // Create output file with all the preprocessor output we buffered up
         const string vppfilename = v3Global.opt.hierTopDataDir() + "/" + v3Global.opt.prefix()
                                    + "__" + nondirname + ".vpp";

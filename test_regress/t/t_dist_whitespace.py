@@ -14,7 +14,7 @@ test.scenarios('dist')
 
 Binary_Exempt_Re = r'(docs/.*\.png|test_regress/t/t_lint_bsspace_bad.v|test_regress/t/t_sys_file_basic_uz.dat)'
 
-Tabs_Exempt_Re = r'(\.out$)|(/fstcpp)|(Makefile)|(\.mk$)|(\.mk\.in$)|test_regress/t/t_preproc\.v|install-sh'
+Tabs_Exempt_Re = r'(\.out$)|(/fstcpp)|(Makefile)|(\.mk$)|(\.mk\.in$)|test_regress/t/t_preproc\.v'
 
 Unicode_Exempt_Re = r'(Changes$|CONTRIBUTORS$|LICENSES?|contributors.rst$|spelling.txt$|ci-rtlmeter-report.py)'
 

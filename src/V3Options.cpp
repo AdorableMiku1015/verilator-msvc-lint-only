@@ -114,14 +114,11 @@ public:
     void addSubdirsRecursive(const string& dir) {
 #ifdef _MSC_VER
         try {
-            for (const auto& dirEntry : std::filesystem::recursive_directory_iterator(dir.c_str())) {
-                if (dirEntry.is_directory()) {
-                    addIncDirUser(dirEntry.path().string());
-                }
+            for (const auto& dirEntry :
+                 std::filesystem::recursive_directory_iterator(dir.c_str())) {
+                if (dirEntry.is_directory()) { addIncDirUser(dirEntry.path().string()); }
             }
-        } catch (std::filesystem::filesystem_error const& ex) {
-            (void)ex;
-        }
+        } catch (std::filesystem::filesystem_error const& ex) { (void)ex; }
 #else
         if (DIR* const dirp = opendir(dir.c_str())) {
             while (struct dirent* direntp = readdir(dirp)) {
@@ -319,7 +316,9 @@ void VTimescale::parseSlashed(FileLine* fl, const char* textp, VTimescale& unitr
 // V3Options class functions
 
 void V3Options::addIncDirUser(const string& incdir) { m_impp->addIncDirUser(incdir); }
-void V3Options::addIncDirUserRecursive(const string& incdir) { m_impp->addIncDirUserRecursive(incdir); }
+void V3Options::addIncDirUserRecursive(const string& incdir) {
+    m_impp->addIncDirUserRecursive(incdir);
+}
 void V3Options::addIncDirFallback(const string& incdir) { m_impp->addIncDirFallback(incdir); }
 void V3Options::addLangExt(const string& langext, const V3LangCode& lc) {
     m_impp->addLangExt(langext, lc);

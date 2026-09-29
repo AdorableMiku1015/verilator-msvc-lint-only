@@ -36,12 +36,10 @@ EXEMPT_COPYRIGHT_FILES = """
     docs/verilated.dox
     include/fstcpp
     include/vltstd
-    install-sh
     src/mkinstalldirs
     test_regress/t/t_altera_lpm.v
     test_regress/t/t_randsequence_svtests.v
     test_regress/t/uvm/
-    verilator.pc.in
     """
 
 Exempt_Copyright_Files_Re = list(map(re.escape, EXEMPT_COPYRIGHT_FILES.split()))

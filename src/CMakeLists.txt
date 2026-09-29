@@ -120,7 +120,6 @@ set(HEADERS
     V3MemberMap.h
     V3Mutex.h
     V3Name.h
-    V3Name.h
     V3Number.h
     V3OptionParser.h
     V3Options.h
@@ -291,12 +290,6 @@ set(COMMON_SOURCES
     V3WidthSel.cpp
 )
 
-set(COVERAGE_SOURCES VlcMain.cpp)
-
-# Note about tests:
-# VlcMain.cpp #includes the following files:
-#  V3Error.cpp, V3String.cpp, V3Os.cpp and VlcTop.cpp
-
 #
 # Generated sources and headers for the verilator binary
 
@@ -306,7 +299,6 @@ file(TO_NATIVE_PATH ${srcdir}/astgen ASTGEN)
 file(TO_NATIVE_PATH ${srcdir}/bisonpre BISONPRE)
 file(TO_NATIVE_PATH ${srcdir}/flexfix FLEXFIX)
 file(TO_NATIVE_PATH ${srcdir}/../bin/verilator_includer VERILATOR_INCLUDER)
-file(TO_NATIVE_PATH ${srcdir}/vlcovgen VLCOVGEN)
 file(TO_NATIVE_PATH ${srcdir}/config_rev CONFIG_REV)
 
 configure_file(config_package.h.in config_package.h @ONLY)
@@ -404,7 +396,7 @@ add_custom_target(
 # Output included by another source file
 
 set(gitHead ${srcdir}/../.git/logs/HEAD)
-if(NOT EXISTS ${githead})
+if(NOT EXISTS ${gitHead})
     set(gitHead "")
 endif()
 add_custom_command(
@@ -436,31 +428,15 @@ foreach(astgen_name ${ASTGENERATED_NAMES})
 endforeach()
 
 #
-# Set up the Coverage build type
-
-addbuildtype(DEBUG COVERAGE)
-
-# This regenerates include/verilated_cov_key.h in the source tree.
-# It is a custom_target, not custom_command, because vlcovgen.d is
-# a phony target (it doesn't exist as a file).
-add_custom_target(
-    vlcovgen.d${CMAKE_BUILD_TYPE}
-    DEPENDS ../include/verilated_cov_key.h ${VLCOVGEN}
-    COMMENT "Updating include/verilated_cov_key.h"
-    COMMAND ${PYTHON3} ${VLCOVGEN} --srcdir ${srcdir}
-)
-
-#
 # Set up the verilator binary target
 
 set(verilator verilator${CMAKE_BUILD_TYPE})
 
 add_executable(
     ${verilator}
-    $<$<NOT:$<CONFIG:COVERAGE>>:${COMMON_SOURCES}>
-    $<$<NOT:$<CONFIG:COVERAGE>>:${GENERATED_FILES}>
-    $<$<CONFIG:COVERAGE>:${COVERAGE_SOURCES}
-    config_rev.h>
+    ${COMMON_SOURCES}
+    ${GENERATED_FILES}
+    config_rev.h
 )
 
 set_target_properties(
@@ -468,22 +444,13 @@ set_target_properties(
     PROPERTIES
         OUTPUT_NAME_RELEASE verilator_bin
         OUTPUT_NAME_DEBUG verilator_bin_dbg
-        OUTPUT_NAME_COVERAGE verilator_coverage_bin_dbg
         #UNITY_BUILD $<IF:$<CONFIG:DEBUG>,FALSE,${CMAKE_UNITY_BUILD}>
         MSVC_RUNTIME_LIBRARY MultiThreaded$<IF:$<CONFIG:Release>,,DebugDLL>
         #JOB_POOL_LINK         one_job      # Linking takes lots of resources
-        INTERPROCEDURAL_OPTIMIZATION_RELEASE $<IF:MINGW,FALSE,TRUE>
+        INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE
 )
 
-if(MINGW)
-    # Search MSYS Flex headers after the active toolchain's system headers.
-    target_compile_options(
-        ${verilator}
-        PRIVATE -idirafter "${FLEX_INCLUDE_DIR}"
-    )
-else()
-    target_include_directories(${verilator} PRIVATE "${FLEX_INCLUDE_DIR}")
-endif()
+target_include_directories(${verilator} PRIVATE "${FLEX_INCLUDE_DIR}")
 
 add_dependencies(
     ${verilator}
@@ -492,17 +459,6 @@ add_dependencies(
 )
 
 target_link_libraries(${verilator} PRIVATE Threads::Threads)
-
-# verilated_cov_key.h is only regenerated in a single-configuration environment.
-# This limitation can be lifted when `add_dependencies` will support generator
-# expressions. See https://gitlab.kitware.com/cmake/cmake/issues/19467
-if(CMAKE_BUILD_TYPE STREQUAL Coverage)
-    add_dependencies(${verilator} vlcovgen.d${CMAKE_BUILD_TYPE})
-endif()
-
-if(NOT MSVC)
-    target_compile_features(${verilator} PRIVATE cxx_std_11)
-endif()
 
 target_compile_definitions(
     ${verilator}
@@ -522,25 +478,21 @@ target_include_directories(
         ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
-if(WIN32)
-    if(MINGW)
-        target_compile_options(${verilator} PRIVATE -Wa,-mbig-obj)
-        target_link_options(
-            ${verilator}
-            PRIVATE
-                -Wl,--stack,10000000
-                -mconsole
-                -lcomctl32
-                -DWIN_32_LEAN_AND_MEAN
-        )
-    else()
-        target_compile_options(${verilator} PRIVATE /bigobj)
-        target_link_options(${verilator} PRIVATE /STACK:10000000)
-    endif()
+target_compile_options(${verilator} PRIVATE /bigobj)
+target_link_options(${verilator} PRIVATE /STACK:10000000)
+target_compile_definitions(${verilator} PRIVATE YY_NO_UNISTD_H)
+target_include_directories(${verilator} PRIVATE ../platform/win32)
+target_link_libraries(${verilator} PRIVATE bcrypt psapi)
 
-    target_compile_definitions(${verilator} PRIVATE YY_NO_UNISTD_H)
-    target_include_directories(${verilator} PRIVATE ../platform/win32)
-    target_link_libraries(${verilator} PRIVATE bcrypt psapi)
-endif()
+# The test harness and the bin/verilator wrapper both expect the binary next to
+# the wrapper, which is what upstream's make-based build did.
+add_custom_command(
+    TARGET ${verilator}
+    POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "$<TARGET_FILE:${verilator}>"
+            "${CMAKE_CURRENT_SOURCE_DIR}/../bin/$<TARGET_FILE_NAME:${verilator}>"
+    COMMENT "Copying $<TARGET_FILE_NAME:${verilator}> to bin/"
+)
 
 install(TARGETS ${verilator})

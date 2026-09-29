@@ -21,58 +21,56 @@ project(
     LANGUAGES CXX
 )
 
+# This fork builds only the lint half of Verilator, with the MSVC toolchain, for
+# Windows x64. Anything else is unsupported, so fail early and clearly rather
+# than producing a binary that was never tested.
+if(NOT WIN32)
+    message(FATAL_ERROR "This lint-only Verilator builds on Windows only.")
+endif()
+if(NOT MSVC)
+    message(FATAL_ERROR "This lint-only Verilator requires MSVC (cl.exe).")
+endif()
+if(NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
+    message(FATAL_ERROR "This lint-only Verilator requires a 64-bit target.")
+endif()
+
 # Set default build type to Release if not specified
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
 endif()
-
-option(
-    DEBUG_AND_RELEASE_AND_COVERAGE
-    "Builds both the debug and release binaries, overriding CMAKE_BUILD_TYPE. Not supported under MSBuild."
-)
 
 find_package(Python3 COMPONENTS Interpreter)
 set(PYTHON3 ${Python3_EXECUTABLE})
 # See also CMake built-in; CMAKE_INSTALL_PREFIX is applied by the install command.
 set(CMAKE_INSTALL_DATADIR .)
 include(GNUInstallDirs)
-include(CMakePackageConfigHelpers)
 include(CheckStructHasMember)
-include(ExternalProject)
 include(FindThreads)
 
-if(NOT WIN32)
-    message(WARNING "CMake support on Linux/OSX is experimental.")
+if(DEFINED ENV{WIN_FLEX_BISON})
+    set(WIN_FLEX_BISON "$ENV{WIN_FLEX_BISON}")
 endif()
-
-if(WIN32)
-    if(DEFINED ENV{WIN_FLEX_BISON})
-        set(WIN_FLEX_BISON "$ENV{WIN_FLEX_BISON}")
-    endif()
-    if(IS_DIRECTORY ${WIN_FLEX_BISON})
-        list(APPEND CMAKE_PREFIX_PATH ${WIN_FLEX_BISON})
-    else()
-        message(
-            FATAL_ERROR
-            "The path specified by WIN_FLEX_BISON environment variable is not an existing folder: ${WIN_FLEX_BISON}"
-        )
-    endif()
-    if(NOT WIN_FLEX_BISON)
-        message(
-            FATAL_ERROR
-            "Please install https://github.com/lexxmark/winflexbison and set WIN_FLEX_BISON environment variable. Please use install cmake target after a successful build."
-        )
-    endif()
-    set(CMAKE_CXX_STANDARD 20)
-    if(MSVC)
-        # MSVC reports __cplusplus as 199711L unless /Zc:__cplusplus is given,
-        # even when compiling with /std:c++20. Without it the C++11+ guards in
-        # include/verilatedos.h silently select their pre-C++11 fallbacks, so
-        # for example VL_DANGLING() compiles to nothing and leaves a pointer
-        # dangling after VL_DO_DANGLING(); see V3LinkDot's AstWithParse visitor.
-        add_compile_options(/Zc:__cplusplus)
-    endif()
+if(IS_DIRECTORY ${WIN_FLEX_BISON})
+    list(APPEND CMAKE_PREFIX_PATH ${WIN_FLEX_BISON})
+else()
+    message(
+        FATAL_ERROR
+        "The path specified by WIN_FLEX_BISON environment variable is not an existing folder: ${WIN_FLEX_BISON}"
+    )
 endif()
+if(NOT WIN_FLEX_BISON)
+    message(
+        FATAL_ERROR
+        "Please install https://github.com/lexxmark/winflexbison and set WIN_FLEX_BISON environment variable."
+    )
+endif()
+set(CMAKE_CXX_STANDARD 20)
+# MSVC reports __cplusplus as 199711L unless /Zc:__cplusplus is given, even when
+# compiling with /std:c++20. Without it the C++11+ guards in
+# include/verilatedos.h silently select their pre-C++11 fallbacks, so for example
+# VL_DANGLING() compiles to nothing and leaves a pointer dangling after
+# VL_DO_DANGLING(); see V3LinkDot's AstWithParse visitor.
+add_compile_options(/Zc:__cplusplus)
 
 set(OBJCACHE "" CACHE STRING "Path for ccache, auto-detected if empty")
 option(OBJCACHE_ENABLED "Compile Verilator with ccache" ON)
@@ -133,44 +131,10 @@ endif()
 mark_as_advanced(FLEX_EXECUTABLE FLEX_INCLUDE_DIR)
 
 # Build
-#set_property(GLOBAL PROPERTY JOB_POOLS one_job=1)
 
-if(DEBUG_AND_RELEASE_AND_COVERAGE)
-    if(CMAKE_GENERATOR MATCHES "^Visual Studio ")
-        error("%Error: The DEBUG_AND_RELEASE_AND_COVERAGE option is not supported in MSBuild-based builds.")
-    endif()
-    set(saved_build_type ${CMAKE_BUILD_TYPE})
-    set(CMAKE_BUILD_TYPE Debug)
-    add_subdirectory(src build-Debug)
-    set(CMAKE_BUILD_TYPE Release)
-    add_subdirectory(src build-Release)
-    set(CMAKE_BUILD_TYPE Coverage)
-    add_subdirectory(src build-Coverage)
-    set(CMAKE_BUILD_TYPE ${saved_build_type})
-else()
-    add_subdirectory(src)
-endif()
+add_subdirectory(src)
 
 # Configuration and Installation
-
-set(PACKAGE_NAME ${PROJECT_NAME})
-set(PACKAGE_VERSION ${PROJECT_VERSION})
-set(CXX ${CMAKE_CXX_COMPILER})
-set(AR ${CMAKE_AR})
-
-# Compiler option that reads a precompiled header, and the compiler's
-# precompiled header filename suffix. Mirrors the probe in configure.ac.
-# include/verilated.mk needs these to compile the fast/slow objects of a split
-# model; leaving them empty puts a bare header name on the compile line.
-if(NOT MSVC)
-    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-        set(CFG_CXXFLAGS_PCH_I "-include-pch")
-        set(CFG_GCH_IF_CLANG ".gch")
-    else()
-        set(CFG_CXXFLAGS_PCH_I "-include")
-        set(CFG_GCH_IF_CLANG "")
-    endif()
-endif()
 
 configure_file(include/verilated_config.h.in include/verilated_config.h @ONLY)
 configure_file(include/verilated.mk.in include/verilated.mk @ONLY)
@@ -184,46 +148,35 @@ install(
     DESTINATION include
 )
 
-configure_package_config_file(
-    verilator-config.cmake.in
-    verilator-config.cmake
-    INSTALL_DESTINATION .
-)
+install(PROGRAMS bin/verilator bin/verilator_includer TYPE BIN)
 
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/verilator-config.cmake DESTINATION .)
-
-configure_package_config_file(
-    verilator-config-version.cmake.in
-    verilator-config-version.cmake
-    INSTALL_DESTINATION .
+# Development helpers. The GNU make targets that used to provide these went away
+# with the autoconf build.
+find_program(CLANG_FORMAT_EXECUTABLE clang-format)
+file(
+    GLOB_RECURSE VERILATOR_FORMAT_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/*.h"
 )
-
-install(
-    FILES ${CMAKE_CURRENT_BINARY_DIR}/verilator-config-version.cmake
-    DESTINATION .
-)
-
-foreach(
-    program
-    verilator
-    verilator_ccache_report
-    verilator_coverage
-    verilator_difftree
-    verilator_gantt
-    verilator_includer
-    verilator_profcfunc
-)
-    install(PROGRAMS bin/${program} TYPE BIN)
-endforeach()
-
-install(
-    DIRECTORY examples
-    TYPE DATA
-    FILES_MATCHING
-    PATTERN "examples/*/*.[chv]*"
-    PATTERN "examples/*/Makefile*"
-    PATTERN "examples/*/CMakeLists.txt"
-)
+if(CLANG_FORMAT_EXECUTABLE)
+    add_custom_target(
+        format
+        COMMAND ${CLANG_FORMAT_EXECUTABLE} -i ${VERILATOR_FORMAT_SOURCES}
+        COMMENT "Formatting C++ sources with clang-format"
+        VERBATIM
+    )
+    add_custom_target(
+        format-check
+        COMMAND ${CLANG_FORMAT_EXECUTABLE} --dry-run --Werror
+                ${VERILATOR_FORMAT_SOURCES}
+        COMMENT "Checking C++ formatting with clang-format"
+        VERBATIM
+    )
+else()
+    message(STATUS "clang-format not found; the format targets are unavailable")
+endif()
 
 install(
     DIRECTORY include

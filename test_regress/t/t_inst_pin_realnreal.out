@@ -1,6 +1,0 @@
-%Error-UNSUPPORTED: t/t_inst_pin_realnreal.v:63:8: Unsupported: Output port connection 'out' connects real to non-real
-                                                 : ... note: In instance 't.netlist'
-   63 |       .out(pga_out)
-      |        ^~~
-                    ... For error description see https://verilator.org/warn/UNSUPPORTED?v=latest
-%Error: Exiting due to

@@ -166,12 +166,6 @@ set(HEADERS
     V3Width.h
     V3WidthCommit.h
     V3WidthRemove.h
-    VlcBucket.h
-    VlcOptions.h
-    VlcPoint.h
-    VlcSource.h
-    VlcTest.h
-    VlcTop.h
 )
 
 set(COMMON_SOURCES

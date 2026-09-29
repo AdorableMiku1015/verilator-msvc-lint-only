@@ -18,6 +18,7 @@
 
 #include "V3File.h"
 
+#include "V3Options.h"
 #include "V3Os.h"
 #include "V3String.h"
 
@@ -122,6 +123,11 @@ class V3FileDependImp final {
 public:
     // ACCESSOR METHODS
     void addSrcDepend(const string& filename) VL_MT_SAFE_EXCLUDES(m_mutex) {
+        // The built-in std package and waivers are compiled into the binary, so
+        // they are named <verilated_std> and friends and have no file to watch
+        if (filename == V3Options::getStdPackagePath()
+            || filename == V3Options::getStdWaiverPath())
+            return;
         const V3LockGuard lock{m_mutex};
         const auto itFoundPair = m_filenameSet.insert(filename);
         if (itFoundPair.second) {

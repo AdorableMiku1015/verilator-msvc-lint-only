@@ -307,13 +307,13 @@ set_property(
     PROPERTY CMAKE_CONFIGURE_DEPENDS "${VL_STD_PACKAGE_FILE}"
              "${VL_STD_WAIVER_FILE}"
 )
-# Drop any CRs so the compiled-in text does not depend on how the checkout was
-# made; the preprocessor strips them anyway.
+# The compiled-in text must not depend on how the checkout was made, so read the
+# files with their CRs removed and write the header with LF endings.
 file(READ "${VL_STD_PACKAGE_FILE}" VL_STD_PACKAGE_TEXT)
 string(REPLACE "\r" "" VL_STD_PACKAGE_TEXT "${VL_STD_PACKAGE_TEXT}")
 file(READ "${VL_STD_WAIVER_FILE}" VL_STD_WAIVER_TEXT)
 string(REPLACE "\r" "" VL_STD_WAIVER_TEXT "${VL_STD_WAIVER_TEXT}")
-configure_file(V3StdEmbedded.h.in V3StdEmbedded.h @ONLY)
+configure_file(V3StdEmbedded.h.in V3StdEmbedded.h @ONLY NEWLINE_STYLE LF)
 list(APPEND GENERATED_FILES V3StdEmbedded.h)
 
 add_custom_command(

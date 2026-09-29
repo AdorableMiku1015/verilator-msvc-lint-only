@@ -26,6 +26,7 @@
 #include "V3OptionParser.h"
 #include "V3Os.h"
 #include "V3PreShell.h"
+#include "V3StdEmbedded.h"
 #include "V3String.h"
 
 // clang-format off
@@ -925,12 +926,10 @@ string V3Options::getenvVERILATOR_SOLVER() {
     return var;
 }
 
-string V3Options::getStdPackagePath() {
-    return V3Os::filenameJoin(getenvVERILATOR_ROOT(), "include", "verilated_std.sv");
-}
-string V3Options::getStdWaiverPath() {
-    return V3Os::filenameJoin(getenvVERILATOR_ROOT(), "include", "verilated_std_waiver.vlt");
-}
+string V3Options::getStdPackagePath() { return "<verilated_std>"; }
+string V3Options::getStdWaiverPath() { return "<verilated_std_waiver>"; }
+const char* V3Options::getStdPackageText() { return V3_EMBEDDED_STD_PACKAGE; }
+const char* V3Options::getStdWaiverText() { return V3_EMBEDDED_STD_WAIVER; }
 
 string V3Options::getSupported(const string& var) {
     // If update below, also update V3Options::showVersion()

@@ -208,6 +208,7 @@ public:
 
 private:
     // Internal methods
+    void openWholefile(StrList& wholefile, const string& filename);
     void endOfOneFile();
     string defineSubst(VDefineRef* refp);
 
@@ -256,6 +257,7 @@ private:
 public:
     // METHODS, called from upper level shell
     void openFile(FileLine* fl, VInFilter* filterp, const string& filename) override;
+    void openText(FileLine* fl, const string& text, const string& filename) override;
     bool isEof() const override { return m_lexp->curStreamp()->m_eof; }
     void forceEof() { m_lexp->curStreamp()->m_eof = true; }
     string getline() override;
@@ -866,6 +868,22 @@ void V3PreProcImp::openFile(FileLine*, VInFilter* filterp, const string& filenam
         return;
     }
 
+    openWholefile(wholefile, filename);
+}
+
+void V3PreProcImp::openText(FileLine*, const string& text, const string& filename) {
+    // Same as openFile, except the contents are supplied rather than read. Used
+    // for the built-in std package and lint waivers, which are compiled in.
+    if (m_incError) return;
+    m_lexp->setYYDebug(debug() >= 5);
+
+    StrList wholefile;
+    wholefile.emplace_back(text);
+
+    openWholefile(wholefile, filename);
+}
+
+void V3PreProcImp::openWholefile(StrList& wholefile, const string& filename) {
     if (!m_preprocp->isEof()) {  // IE not the first file.
         // We allow the same include file twice, because occasionally it pops
         // up, with guards preventing a real recursion.

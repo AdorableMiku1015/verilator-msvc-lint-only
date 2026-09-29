@@ -399,6 +399,29 @@ void V3ParseImp::parseFile(
         return;
     }
 
+    parsePreprocessed(modfilename, nondirname);
+}
+
+void V3ParseImp::parseText(FileLine* fileline, const string& text, const string& modfilename) {
+    // Same as parseFile, except the source text comes from the caller instead of
+    // a file on disk. Used for the built-in std package and lint waivers, which
+    // are compiled into the binary.
+    const string nondirname = V3Os::filenameNonDir(modfilename);
+
+    UINFO(2, __FUNCTION__ << ": " << modfilename);
+    m_lexFileline = new FileLine{fileline};
+    m_lexFileline->newContent();
+    m_bisonLastFileline = m_lexFileline;
+    m_inLibrary = false;
+    m_inLibMap = false;
+    m_libname = "work";
+
+    V3PreShell::preprocText(fileline, text, this);
+
+    parsePreprocessed(modfilename, nondirname);
+}
+
+void V3ParseImp::parsePreprocessed(const string& modfilename, const string& nondirname) {
     if (v3Global.opt.preprocOnly() || v3Global.opt.keepTempFiles()) {
         // Create output file with all the preprocessor output we buffered up
         const string vppfilename = v3Global.opt.hierTopDataDir() + "/" + v3Global.opt.prefix()
@@ -411,7 +434,7 @@ void V3ParseImp::parseFile(
             osp = ofp = V3File::new_ofstream(vppfilename);
         }
         if (osp->fail()) {
-            fileline->v3error("Can't write file: " + vppfilename);
+            m_lexFileline->v3error("Can't write file: " + vppfilename);
             return;
         }
         if (v3Global.opt.dumpDefines()) {
@@ -963,6 +986,9 @@ void V3Parse::parseFile(FileLine* fileline, const string& modname, bool inLibrar
                         const string& libname, const string& errmsg,
                         const std::string& notFoundName) {
     m_impp->parseFile(fileline, modname, inLibrary, inLibMap, libname, errmsg, notFoundName);
+}
+void V3Parse::parseText(FileLine* fileline, const string& text, const string& modname) {
+    m_impp->parseText(fileline, text, modname);
 }
 void V3Parse::ppPushText(V3ParseImp* impp, const string& text) {
     if (text != "") impp->ppPushText(text);

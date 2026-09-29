@@ -297,6 +297,25 @@ file(TO_NATIVE_PATH ${srcdir}/config_rev CONFIG_REV)
 
 configure_file(config_package.h.in config_package.h @ONLY)
 
+# The built-in std package and lint waivers are read on every lint run. Compile
+# them in so the binary does not need them on disk next to it.
+set(VL_STD_PACKAGE_FILE "${srcdir}/../include/verilated_std.sv")
+set(VL_STD_WAIVER_FILE "${srcdir}/../include/verilated_std_waiver.vlt")
+set_property(
+    DIRECTORY
+    APPEND
+    PROPERTY CMAKE_CONFIGURE_DEPENDS "${VL_STD_PACKAGE_FILE}"
+             "${VL_STD_WAIVER_FILE}"
+)
+# Drop any CRs so the compiled-in text does not depend on how the checkout was
+# made; the preprocessor strips them anyway.
+file(READ "${VL_STD_PACKAGE_FILE}" VL_STD_PACKAGE_TEXT)
+string(REPLACE "\r" "" VL_STD_PACKAGE_TEXT "${VL_STD_PACKAGE_TEXT}")
+file(READ "${VL_STD_WAIVER_FILE}" VL_STD_WAIVER_TEXT)
+string(REPLACE "\r" "" VL_STD_WAIVER_TEXT "${VL_STD_WAIVER_TEXT}")
+configure_file(V3StdEmbedded.h.in V3StdEmbedded.h @ONLY)
+list(APPEND GENERATED_FILES V3StdEmbedded.h)
+
 add_custom_command(
     OUTPUT V3Ast__gen_forward_class_decls.h V3Dfg__gen_forward_class_decls.h
     DEPENDS ./V3Ast.h ${ASTGEN}

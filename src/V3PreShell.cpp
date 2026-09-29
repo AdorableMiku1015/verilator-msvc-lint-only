@@ -114,6 +114,30 @@ protected:
         return true;
     }
 
+    bool preprocText(FileLine* fl, const string& text, V3ParseImp* parsep) {
+        // Same as preproc(), but the source is supplied rather than found on
+        // disk. Used for the built-in std package and lint waivers.
+        const string modfilename = fl->filename();
+        UINFO(1, "Preprocessing " << modfilename);
+
+        s_filterp = nullptr;
+        s_preprocp->openText(fl, text, modfilename);
+
+        // Set language standard up front; see preproc()
+        if (!v3Global.opt.preprocOnly() || v3Global.opt.preprocResolve()) {
+            const FileLine* const modfileline = new FileLine{modfilename};
+            modfileline->language(v3Global.opt.fileLanguage(modfilename));
+            V3Parse::ppPushText(
+                parsep, ("`begin_keywords \""s + modfileline->language().ascii() + "\"\n"));
+        }
+
+        while (!s_preprocp->isEof()) {
+            const string line = s_preprocp->getline();
+            V3Parse::ppPushText(parsep, line);
+        }
+        return true;
+    }
+
     void preprocInclude(FileLine* fl, const string& modname) {
         if (modname[0] == '/' || modname[0] == '\\') {
             fl->v3warn(INCABSPATH,
@@ -163,6 +187,9 @@ void V3PreShell::shutdown() { V3PreShellImp::s_preImp.shutdown(); }
 bool V3PreShell::preproc(FileLine* fl, const string& modname, VInFilter* filterp,
                          V3ParseImp* parsep, const string& errmsg) {
     return V3PreShellImp::s_preImp.preproc(fl, modname, filterp, parsep, errmsg);
+}
+bool V3PreShell::preprocText(FileLine* fl, const string& text, V3ParseImp* parsep) {
+    return V3PreShellImp::s_preImp.preprocText(fl, text, parsep);
 }
 void V3PreShell::preprocInclude(FileLine* fl, const string& modname) {
     V3PreShellImp::s_preImp.preprocInclude(fl, modname);

@@ -312,6 +312,9 @@ public:
     void parseFile(FileLine* fileline, const string& modfilename, bool inLibrary, bool inLibMap,
                    const string& libname, const string& errmsg,
                    const std::string& notFoundName) VL_MT_DISABLED;
+    // Preprocess and read source text supplied directly, rather than a file
+    void parseText(FileLine* fileline, const string& text,
+                   const string& modfilename) VL_MT_DISABLED;
     void dumpInputsFile() VL_MT_DISABLED;
     void dumpTokensAhead(int line) VL_MT_DISABLED;
     static void candidatePli(VSpellCheck* spellerp) VL_MT_DISABLED;
@@ -320,6 +323,8 @@ public:
 
 private:
     void preprocDumps(std::ostream& os);
+    // Finish parsing whatever the preprocessor buffered, however it was supplied
+    void parsePreprocessed(const string& modfilename, const string& nondirname);
     void lexFile(const string& modname) VL_MT_DISABLED;
     void yylexReadTok() VL_MT_DISABLED;
     void tokenPull() VL_MT_DISABLED;

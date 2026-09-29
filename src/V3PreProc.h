@@ -52,6 +52,9 @@ public:
     // ACCESSORS
     // Insert given file into this point in input stream
     virtual void openFile(FileLine* fileline, VInFilter* filterp, const string& filename) = 0;
+    // Insert given text into this point in input stream, as if it were the
+    // contents of filename
+    virtual void openText(FileLine* fileline, const string& text, const string& filename) = 0;
     virtual string getline() = 0;  // Return next line/lines. (Null if done.)
     virtual bool isEof() const = 0;  // Return true on EOF.
     virtual void insertUnreadback(const string& text) = 0;

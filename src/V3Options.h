@@ -831,6 +831,10 @@ public:
     static string getenvVERILATOR_SOLVER();
     static string getStdPackagePath();
     static string getStdWaiverPath();
+    // The built-in std package and lint waivers are compiled into the binary;
+    // these return their contents.
+    static const char* getStdPackageText();
+    static const char* getStdWaiverText();
     static string getSupported(const string& var);
     static bool systemCSystemWide();
     static bool systemCFound();  // SystemC installed, or environment points to it

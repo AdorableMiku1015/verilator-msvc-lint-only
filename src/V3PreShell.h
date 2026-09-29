@@ -36,6 +36,8 @@ public:
     static void shutdown() VL_MT_DISABLED;
     static bool preproc(FileLine* fl, const string& modname, VInFilter* filterp,
                         V3ParseImp* parsep, const string& errmsg) VL_MT_DISABLED;
+    // Same, but the source text is supplied rather than read from a file
+    static bool preprocText(FileLine* fl, const string& text, V3ParseImp* parsep) VL_MT_DISABLED;
     static void preprocInclude(FileLine* fl, const string& modname) VL_MT_DISABLED;
     static void defineCmdLine(const string& name, const string& value) VL_MT_DISABLED;
     static void undef(const string& name) VL_MT_DISABLED;

@@ -87,10 +87,8 @@ void V3Global::readFiles() {
 
         // Parse the std waivers
         if (v3Global.opt.stdWaiver()) {
-            parser.parseFile(
-                new FileLine{V3Options::getStdWaiverPath()}, V3Options::getStdWaiverPath(), false,
-                false, "work",
-                "Cannot find verilated_std_waiver.vlt containing built-in lint waivers: ");
+            parser.parseText(new FileLine{V3Options::getStdWaiverPath()},
+                             V3Options::getStdWaiverText(), V3Options::getStdWaiverPath());
         }
         // Read .vlt files
         for (const VFileLibName& filelib : v3Global.opt.vltFiles()) {
@@ -101,10 +99,8 @@ void V3Global::readFiles() {
 
         // Parse the std package
         if (v3Global.opt.stdPackage()) {
-            parser.parseFile(
-                new FileLine{V3Options::getStdPackagePath()}, V3Options::getStdPackagePath(),
-                false, false, "work",
-                "Cannot find verilated_std.sv containing built-in std:: definitions: ");
+            parser.parseText(new FileLine{V3Options::getStdPackagePath()},
+                             V3Options::getStdPackageText(), V3Options::getStdPackagePath());
         }
 
         // Parse libmap files

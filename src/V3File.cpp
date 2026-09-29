@@ -363,22 +363,18 @@ private:
         const int fd = open(filename.c_str(), O_RDONLY);
         if (fd < 0) return false;
         m_readEof = false;
-        readBlocks(fd, -1, outl);
+        readBlocks(fd, outl);
         close(fd);
         return true;
     }
 
-    void readBlocks(int fd, int size, StrList& outl) {
+    void readBlocks(int fd, StrList& outl) {
         char buf[INFILTER_IPC_BUFSIZ];
-        ssize_t sizegot = 0;
-        while (!m_readEof && (size < 0 || size > sizegot)) {
-            ssize_t todo = INFILTER_IPC_BUFSIZ;
-            if (size > 0 && size < todo) todo = size;
+        while (!m_readEof) {
             errno = 0;
-            const ssize_t got = read(fd, buf, todo);
+            const ssize_t got = read(fd, buf, INFILTER_IPC_BUFSIZ);
             if (got > 0) {
                 outl.emplace_back(string(buf, got));
-                sizegot += got;
             } else if (errno == EINTR) {
                 continue;
             } else {

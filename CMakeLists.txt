@@ -64,6 +64,14 @@ if(WIN32)
         )
     endif()
     set(CMAKE_CXX_STANDARD 20)
+    if(MSVC)
+        # MSVC reports __cplusplus as 199711L unless /Zc:__cplusplus is given,
+        # even when compiling with /std:c++20. Without it the C++11+ guards in
+        # include/verilatedos.h silently select their pre-C++11 fallbacks, so
+        # for example VL_DANGLING() compiles to nothing and leaves a pointer
+        # dangling after VL_DO_DANGLING(); see V3LinkDot's AstWithParse visitor.
+        add_compile_options(/Zc:__cplusplus)
+    endif()
 endif()
 
 set(OBJCACHE "" CACHE STRING "Path for ccache, auto-detected if empty")

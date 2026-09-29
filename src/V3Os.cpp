@@ -15,14 +15,10 @@
 //*************************************************************************
 
 // clang-format off
-#if defined(_WIN32) || defined(__MINGW32__)
-# ifndef PSAPI_VERSION
-#  define PSAPI_VERSION 1  // Needed for compatibility with Windows 7
-# endif
+#ifndef PSAPI_VERSION
+# define PSAPI_VERSION 1  // Needed for compatibility with Windows 7
 #endif
-#ifndef __MINGW32__
-# define MINGW_HAS_SECURE_API 1  // Needed to expose a "secure" POSIX-like API
-#endif
+#define MINGW_HAS_SECURE_API 1  // Needed to expose a "secure" POSIX-like API
 // clang-format on
 
 #include "config_build.h"
@@ -38,15 +34,10 @@ VL_DEFINE_DEBUG_FUNCTIONS;
 #endif
 
 #include <cerrno>
-#include <climits>  // PATH_MAX (especially on FreeBSD)
+#include <climits>  // PATH_MAX
 #include <cstdarg>
-#ifdef _MSC_VER
 #include <filesystem>  // C++17
 #define PATH_MAX MAX_PATH
-#else
-#include <dirent.h>
-#include <utime.h>
-#endif
 #include <fcntl.h>
 #include <fstream>
 #include <memory>
@@ -62,8 +53,7 @@ VL_DEFINE_DEBUG_FUNCTIONS;
 #endif
 
 // clang-format off
-#if defined(_WIN32) || defined(__MINGW32__)
-# include <windows.h>   // LONG for bcrypt.h on MINGW
+# include <windows.h>   // LONG for bcrypt.h
 # include <algorithm>  // replace
 # include <bcrypt.h>  // BCryptGenRandom
 # include <chrono>
@@ -72,21 +62,9 @@ VL_DEFINE_DEBUG_FUNCTIONS;
 # include <thread>
 // These macros taken from gdbsupport/gdb_wait.h in binutils-gdb
 # ifndef WIFEXITED
-#  ifdef __MINGW32__
-#   define WIFEXITED(w) (((w) & 0xC0000000) == 0)
-#   define WEXITSTATUS(w) ((w) & ~0xC0000000)
-#  else
-#   define WIFEXITED(w) (((w) & 0377) == 0)
-#   define WEXITSTATUS(w) (((w) >> 8) & 0377)
-#  endif
+#  define WIFEXITED(w) (((w) & 0377) == 0)
+#  define WEXITSTATUS(w) (((w) >> 8) & 0377)
 # endif
-#else
-# include <sys/time.h>
-# ifndef __wasi__
-#  include <sys/wait.h>  // Needed on FreeBSD for WIFEXITED
-# endif
-# include <unistd.h>  // usleep
-#endif
 // clang-format on
 
 #define VL_ALLOW_VERILATEDOS_C
@@ -105,34 +83,15 @@ void V3Os::setenvStr(const string& envvar, const string& value, const string& wh
     } else {
         UINFO(1, "export " << envvar << "='" << value << "'");
     }
-#if defined(_WIN32) || defined(__MINGW32__)
     _putenv_s(envvar.c_str(), value.c_str());
-#elif defined(_BSD_SOURCE) || (defined(_POSIX_C_SOURCE) && _POSIX_C_SOURCE >= 200112L)
-    setenv(envvar.c_str(), value.c_str(), true);
-#else
-    // setenv() replaced by putenv() in Solaris environment. Prototype is different
-    // putenv() requires NAME=VALUE format
-    const string vareq = envvar + "=" + value;
-    putenv(strdup(vareq.c_str()));  // will leak if setting the same variable again
-#endif
 }
 
 //######################################################################
 // Generic filename utilities
 
-#if defined(_WIN32) || defined(__MINGW32__)
 static constexpr char V3OS_SLASH = '\\';
-#else
-static constexpr char V3OS_SLASH = '/';
-#endif
 
-static bool isSlash(char ch) VL_PURE {
-#if defined(_WIN32) || defined(__MINGW32__)
-    return ch == '/' || ch == '\\';
-#else
-    return ch == '/';
-#endif
-}
+static bool isSlash(char ch) VL_PURE { return ch == '/' || ch == '\\'; }
 
 string V3Os::filenameCleanup(const string& filename) VL_PURE {
     string str;
@@ -243,15 +202,7 @@ string V3Os::filenameRealPath(const string& filename) VL_PURE {
     // Get rid of all the ../ behavior in the middle of the paths.
     // If there is a ../ that goes down from the 'root' of this path it is preserved.
     char retpath[PATH_MAX];
-    if (
-#if defined(_WIN32) || defined(__MINGW32__)
-        _fullpath(retpath, filename.c_str(), PATH_MAX)
-#else
-        realpath(filename.c_str(), retpath)
-#endif
-    ) {
-        return std::string{retpath};
-    }
+    if (_fullpath(retpath, filename.c_str(), PATH_MAX)) { return std::string{retpath}; }
     return filename;
 }
 
@@ -305,21 +256,13 @@ string V3Os::filenameRelativePath(const string& filename, const string& base) VL
 }
 
 bool V3Os::filenameIsRel(const string& filename) VL_PURE {
-#if defined(_MSC_VER)
     return std::filesystem::path(filename).is_relative();
-#else
-    return (filename.length() > 0 && filename[0] != '/');
-#endif
 }
 
 string V3Os::filenameSlashPath(const string& filename) VL_PURE {
-#if defined(_WIN32) || defined(__MINGW32__)
     string slashedPath = filename;
     std::replace(slashedPath.begin(), slashedPath.end(), '\\', '/');
     return slashedPath;
-#else
-    return filename;
-#endif
 }
 
 //######################################################################
@@ -327,57 +270,26 @@ string V3Os::filenameSlashPath(const string& filename) VL_PURE {
 
 string V3Os::getline(std::istream& is, char delim) {
     string line;
-#ifdef __CYGWIN__  // Work around buggy implementation of getline
-    char buf[65536];
-    is.getline(buf, 65535, delim);
-    line = buf;
-#else
     std::getline(is, line, delim);
-#endif
     return line;
 }
 
 //######################################################################
 // Directory utilities
 
-void V3Os::createDir(const string& dirname) {
-#if defined(_WIN32) || defined(__MINGW32__)
-    _mkdir(dirname.c_str());
-#else
-    mkdir(dirname.c_str(), 0777);
-#endif
-}
+void V3Os::createDir(const string& dirname) { _mkdir(dirname.c_str()); }
 
 void V3Os::filesystemFlush(const string& dirname) {
     // NFS caches stat() calls so to get up-to-date information must
     // do a open or opendir on the filename.
-#if defined(_MSC_VER) || defined(__MINGW32__)
     if (int fd = ::open(dirname.c_str(), O_RDONLY)) {  // LCOV_EXCL_BR_LINE
         if (fd > 0) ::close(fd);
     }
-#else
-    // Faster to just try both rather than check if a file is a dir.
-    if (DIR* const dirp = opendir(dirname.c_str())) {  // LCOV_EXCL_BR_LINE
-        closedir(dirp);  // LCOV_EXCL_LINE
-    } else if (const int fd = ::open(dirname.c_str(), O_RDONLY)) {  // LCOV_EXCL_BR_LINE
-        if (fd > 0) ::close(fd);
-    }
-#endif
 }
 
-void V3Os::filesystemFlushBuildDir(const string& dirname) {
-    // Attempt to force out written directory, for NFS like file systems.
-#if !defined(_MSC_VER) && !defined(__MINGW32__)
-    // Linux kernel may not reread from NFS unless timestamp modified
-    const int err = utimes(dirname.c_str(), nullptr);
-    // Not an error
-    if (err != 0) UINFO(1, "-Info: File not utimed: " << dirname);
-#endif
-    filesystemFlush(dirname);
-}
+void V3Os::filesystemFlushBuildDir(const string& dirname) { filesystemFlush(dirname); }
 
 void V3Os::unlinkRegexp(const string& dir, const string& regexp) {
-#ifdef _MSC_VER
     try {
         for (const auto& dirEntry : std::filesystem::directory_iterator(dir.c_str())) {
             if (VString::wildmatch(dirEntry.path().filename().string(), regexp.c_str())) {
@@ -386,21 +298,6 @@ void V3Os::unlinkRegexp(const string& dir, const string& regexp) {
             }
         }
     } catch (std::filesystem::filesystem_error const& ex) {}
-#else
-    if (DIR* const dirp = opendir(dir.c_str())) {
-        while (struct dirent* const direntp = readdir(dirp)) {
-            if (VString::wildmatch(direntp->d_name, regexp.c_str())) {
-                const string fullname = dir + "/" + std::string{direntp->d_name};
-#if defined(_WIN32) || defined(__MINGW32__)
-                _unlink(fullname.c_str());
-#else
-                unlink(fullname.c_str());
-#endif
-            }
-        }
-        closedir(dirp);
-    }
-#endif
 }
 
 //######################################################################
@@ -441,27 +338,11 @@ string V3Os::trueRandom(size_t size) VL_MT_SAFE {
     char* const data = const_cast<char*>(result.data());
     // Note: std::string.data() returns a non-const Char* from C++17 onwards.
     // For pre-C++17, this cast is OK in practice, even though it's UB.
-#if defined(_WIN32) || defined(__MINGW32__)
     const NTSTATUS hr = BCryptGenRandom(nullptr, reinterpret_cast<BYTE*>(data), size,
                                         BCRYPT_USE_SYSTEM_PREFERRED_RNG);
     if (VL_UNCOVERABLE(!BCRYPT_SUCCESS(hr))) {
         v3fatal("Could not acquire random data. Try specifying a key instead.");  // LCOV_EXCL_LINE
     }
-#elif defined(__wasi__)
-    // WASI has no /dev/urandom. getentropy() rejects sizes over 256 bytes,
-    // which is more than any caller asks for, and errors rather than truncates.
-    if (VL_UNCOVERABLE(getentropy(data, size))) {
-        v3fatal("Could not acquire random data. Try specifying a key instead.");  // LCOV_EXCL_LINE
-    }
-#else
-    std::ifstream is{"/dev/urandom", std::ios::in | std::ios::binary};
-    // This read uses the size of the buffer.
-    // Flawfinder: ignore
-    if (VL_UNCOVERABLE(!is.read(data, size))) {
-        v3fatal("Could not open /dev/urandom, no source of randomness. "  // LCOV_EXCL_LINE
-                "Try specifying a key instead.");
-    }
-#endif
     return result;
 }
 
@@ -469,7 +350,6 @@ string V3Os::trueRandom(size_t size) VL_MT_SAFE {
 // METHODS (performance)
 
 uint64_t V3Os::timeUsecs() {
-#if defined(_WIN32) || defined(__MINGW32__)
     // Microseconds between 1601-01-01 00:00:00 UTC and 1970-01-01 00:00:00 UTC
     static constexpr uint64_t EPOCH_DIFFERENCE_USECS = 11644473600000000ULL;
 
@@ -478,33 +358,14 @@ uint64_t V3Os::timeUsecs() {
     const uint64_t us
         = ((static_cast<uint64_t>(ft.dwHighDateTime) << 32) + ft.dwLowDateTime + 5ULL) / 10ULL;
     return us - EPOCH_DIFFERENCE_USECS;
-#else
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
-    timeval tv;
-    if (gettimeofday(&tv, nullptr) < 0) return 0;
-    return static_cast<uint64_t>(tv.tv_sec) * 1000000 + tv.tv_usec;
-#endif
 }
 
-void V3Os::u_sleep(int64_t usec) {
-#if defined(_WIN32) || defined(__MINGW32__)
-    std::this_thread::sleep_for(std::chrono::microseconds(usec));
-#else
-    // cppcheck-suppress obsoleteFunctionsusleep
-    // Flawfinder: ignore
-    ::usleep(usec);
-#endif
-}
+void V3Os::u_sleep(int64_t usec) { std::this_thread::sleep_for(std::chrono::microseconds(usec)); }
 
 //######################################################################
 // METHODS (sub command)
 
 int V3Os::system(const string& command) {
-#ifdef __wasi__
-    // WASI has no process spawning
-    v3fatal("Running subcommands is not supported on this platform: " << command);
-    return -1;
-#else
     UINFO(1, "Running system: " << command);
     const int ret = ::system(command.c_str());
     if (VL_UNCOVERABLE(ret == -1)) {
@@ -517,7 +378,6 @@ int V3Os::system(const string& command) {
     UINFO(1, command << " returned exit code of " << exit_code);
     UASSERT(exit_code >= 0, "exit code must not be negative");
     return exit_code;
-#endif
 }
 
 void V3Os::selfTest() {

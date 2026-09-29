@@ -14,4 +14,9 @@ os.chdir(os.path.dirname(os.path.realpath(__file__)) + "/..")
 # Avoid chdir leaving the .. which confuses later commands
 os.environ['PWD'] = os.getcwd()
 args = list(map(lambda arg: re.sub(r'.*/test_regress/', '', arg), sys.argv))
-os.execl("./driver.py", "driver.py", *args)
+if os.name == "nt":
+    # Windows cannot exec a script through its shebang, so re-enter the
+    # interpreter explicitly instead of relying on os.execl("./driver.py").
+    os.execv(sys.executable, [sys.executable, "./driver.py", *args])
+else:
+    os.execl("./driver.py", "driver.py", *args)

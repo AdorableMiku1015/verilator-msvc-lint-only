@@ -12,9 +12,7 @@ import multiprocessing
 import os
 import pickle
 import platform
-import pty
 import re
-import resource
 import runpy
 import shutil
 import signal
@@ -26,7 +24,21 @@ from functools import lru_cache  # Eventually use python 3.9's cache
 from pprint import pformat, pprint
 from typing import Optional
 
-import distro
+# Modules that exist only on POSIX; the harness runs on Windows for lint-only
+# tests, where the features they provide (pseudo terminals, CPU rlimits, Linux
+# distribution detection) have no equivalent. Each use site checks for None.
+try:
+    import pty
+except ImportError:  # Windows
+    pty = None
+try:
+    import resource
+except ImportError:  # Windows
+    resource = None
+try:
+    import distro
+except ImportError:  # Optional dependency, or Windows without the package
+    distro = None
 
 if False:  # pylint: disable=using-constant-test
     pprint(pformat("Ignored"))  # Prevent unused warning
@@ -111,6 +123,29 @@ class VtOs:
             os.mkdir(path)
         except FileExistsError:
             pass
+
+    @staticmethod
+    def rm_rf(path: str) -> None:
+        """Remove a file or directory tree, no error if it does not exist"""
+        if os.name == 'nt':
+            if os.path.isdir(path):
+                shutil.rmtree(path, ignore_errors=True)
+            elif os.path.exists(path):
+                os.remove(path)
+        else:
+            VtOs.system('/bin/rm -rf ' + path)
+
+    @staticmethod
+    def mv(src: str, dst: str) -> None:
+        """Rename, replacing the destination if it exists"""
+        if os.name == 'nt':
+            if os.path.isdir(dst):
+                shutil.rmtree(dst, ignore_errors=True)
+            elif os.path.exists(dst):
+                os.remove(dst)
+            os.rename(src, dst)
+        else:
+            VtOs.system('/bin/mv ' + src + ' ' + dst)
 
     @staticmethod
     def run_capture(command: str, check=True) -> str:
@@ -374,7 +409,8 @@ class Forker:
         # print("-Forker: [" + process.name + "] run_pre_start")
         process.run_pre_start(process)
 
-        ctx = multiprocessing.get_context('forkserver')
+        # Windows has no fork/forkserver; spawn is the only start method there.
+        ctx = multiprocessing.get_context('forkserver' if hasattr(os, 'fork') else 'spawn')
         process.mprocess = ctx.Process(  #
             target=forker.child_start,  # pylint: disable=used-before-assignment
             args=(process, ))
@@ -1093,16 +1129,17 @@ class VlTest:
         """Called on a --driver-clean or rerun to cleanup files."""
         if self.clean_command:
             VtOs.system(self.clean_command)
-        VtOs.system('/bin/rm -rf ' + self.obj_dir + '__fail1')
+        VtOs.rm_rf(self.obj_dir + '__fail1')
         if for_rerun:
             # Prevents false-failures when switching compilers
             # Remove old results to force hard rebuild
-            VtOs.system('/bin/mv ' + self.obj_dir + ' ' + self.obj_dir + '__fail1')
+            VtOs.mv(self.obj_dir, self.obj_dir + '__fail1')
         else:
-            VtOs.system('/bin/rm -rf ' + self.obj_dir)
+            VtOs.rm_rf(self.obj_dir)
 
     def clean_objs(self) -> None:
-        VtOs.system("/bin/rm -rf " + ' '.join(glob.glob(self.obj_dir + "/*")))
+        for path in glob.glob(self.obj_dir + "/*"):
+            VtOs.rm_rf(path)
 
     def _checkflags(self, param):
         checkflags = (
@@ -1387,8 +1424,9 @@ class VlTest:
                 self.skip("Test requires Coroutines; ignore error since not available\n")
                 return
 
-            if self.timing and self.sc and re.search(r'Ubuntu 24.04', distro.name(
-                    pretty=True)) and re.search(r'clang', self.cxx_version):
+            if self.timing and self.sc and distro is not None and re.search(
+                    r'Ubuntu 24.04', distro.name(pretty=True)) and re.search(
+                        r'clang', self.cxx_version):
                 self.skip(
                     "Test requires SystemC and Coroutines; broken on Ubuntu 24.04 w/clang\n" +
                     " OS=" + distro.name(pretty=True) + " CXX=" + self.cxx_version)
@@ -1501,6 +1539,8 @@ class VlTest:
     def timeout(self, seconds):
         """Limit the CPU time of the test - this limit is inherited
         by all of the spawned child processess"""
+        if resource is None:  # Windows has no CPU rlimits
+            return
         #  An  unprivileged  process may set only its soft limit
         #  to a value in the range from 0 up to the hard limit
         _, hardlimit = resource.getrlimit(resource.RLIMIT_CPU)
@@ -1919,6 +1959,13 @@ class VlTest:
             print('run(cmd=' + pformat(cmd))
         command = ' '.join(cmd)
 
+        if os.sep != '/':
+            # Commands are written for a POSIX shell and the golden files record
+            # POSIX-style paths. Windows accepts forward slashes everywhere the
+            # native tools are invoked, so normalize rather than teach every
+            # call site about the platform.
+            command = command.replace('\\', '/')
+
         if aslr_off and aslr_off != "":
             prefix = self.aslr_off
             if prefix:
@@ -1945,7 +1992,7 @@ class VlTest:
         if logfile:
             logfh = open(logfile, 'wb')  # pylint: disable=consider-using-with
 
-        if not Args.interactive_debugger:
+        if not Args.interactive_debugger and pty is not None:
             # Some parallel job's run() may attempt to capture driver.py's
             # terminal, e.g. gdb does this. So, unless known we want to run GDB
             # (where we want it to control the terminal), become a controlling
@@ -1968,6 +2015,24 @@ class VlTest:
                         break
 
                 (pid, rc) = os.waitpid(pid, 0)
+
+        elif not Args.interactive_debugger:
+            # Windows has no pseudo terminal and no /bin/bash. Run the command
+            # through the platform shell, capturing the merged output. Only the
+            # single-command tests (lint) are supported this way; tests whose
+            # command line uses POSIX shell builtins or separators are not.
+            with subprocess.Popen(command,
+                                  shell=True,
+                                  bufsize=0,
+                                  stdout=subprocess.PIPE,
+                                  stderr=subprocess.STDOUT) as proc:
+                while True:
+                    data = proc.stdout.read(2048)
+                    if not data:
+                        break
+                    self._run_output(data, logfh, tee)
+                proc.wait()
+                rc = proc.returncode
 
         else:
             # Do not redirect output when using an interactive debugger, so it
@@ -2047,6 +2112,11 @@ class VlTest:
         return True
 
     def _run_output(self, data, logfh, tee):
+        if os.sep != '/':
+            # Windows tools write CRLF line endings and native backslash paths;
+            # the golden files are shared with the POSIX runs, so normalize the
+            # captured stream the same way the command line is normalized.
+            data = data.replace(b'\r', b'').replace(b'\\', b'/')
         if re.search(r'--debug-exit-.*: Exiting', str(data)):
             self._force_pass = True
             print("EXIT: " + str(data))
@@ -2472,8 +2542,10 @@ class VlTest:
                              moretry: bool) -> bool:
         # If moretry, then return true to try again
         try:
+            # Universal newlines: a Windows checkout may hold CRLF goldens while
+            # the captured log was normalized to LF on the way in.
             f1 = open(  # pylint: disable=consider-using-with
-                fn1, 'r', encoding='latin-1', newline='\n')
+                fn1, 'r', encoding='latin-1', newline=None)
         except FileNotFoundError:
             f1 = None
             if not moretry:
@@ -2481,7 +2553,7 @@ class VlTest:
             return True  # Retry
         try:
             f2 = open(  # pylint: disable=consider-using-with
-                fn2, 'r', encoding='latin-1', newline='\n')
+                fn2, 'r', encoding='latin-1', newline=None)
         except FileNotFoundError:
             f2 = None
             if not moretry:
@@ -3130,7 +3202,7 @@ if __name__ == '__main__':
         # block on input and cause a SIGSTOP, then a "fg" was needed to resume testing.
         print("== Many jobs; redirecting STDIN", file=sys.stderr)
         #
-        sys.stdin = open("/dev/null", 'r', encoding="utf8")  # pylint: disable=consider-using-with
+        sys.stdin = open(os.devnull, 'r', encoding="utf8")  # pylint: disable=consider-using-with
     else:
         # Speed up single-test makes
         Args.driver_build_jobs_n = calc_jobs()

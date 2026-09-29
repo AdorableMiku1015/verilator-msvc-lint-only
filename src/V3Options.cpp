@@ -1003,11 +1003,19 @@ void V3Options::notify() VL_MT_DISABLED {
     // Notify that all arguments have been passed and final modification can be made.
     FileLine* const cmdfl = new FileLine{FileLine::commandLineFilename()};
 
-    if (!outFormatOk() && v3Global.opt.main()) ccSet();  // --main implies --cc if not provided
-    if (!outFormatOk() && !dpiHdrOnly() && !lintOnly() && !preprocOnly() && !serializeOnly()) {
-        v3fatal("verilator: Need --binary, --cc, --sc, --dpi-hdr-only, --lint-only, "
-                "--json-only or --E option");
+    // This build is lint-only: the model emitters and the build orchestration do
+    // not exist, so refuse the options that select them instead of accepting the
+    // argument and then producing nothing.
+    if (outFormatOk() || dpiHdrOnly()) {
+        cmdfl->v3error("Unsupported: this is a lint-only Verilator; --cc, --sc, --sp and "
+                       "--dpi-hdr-only are not available");
     }
+    if (m_build) {
+        cmdfl->v3error("Unsupported: this is a lint-only Verilator; --build, --binary, --exe, "
+                       "--main, --lib-create and --hierarchical are not available");
+    }
+    // Linting is the only thing this build can do, so it is always on.
+    m_lintOnly = true;
 
     if (m_build && (m_gmake || m_makeJson)) {
         cmdfl->v3error("--make cannot be used together with --build. Suggest see manual");

@@ -88,6 +88,7 @@ enum NodeFlag : uint8_t {
     T_FORCES_PROC = 1 << 3,  // Forces VlProcess allocation
     T_NEEDS_PROC = 1 << 4,  // Needs access to VlProcess if it's allocated
     T_HAS_PROC = 1 << 5,  // Has VlProcess argument in the signature
+    T_NBA_UPDATE = 1 << 6,  // Fork branch of a pending NBA update, which is not a subprocess
 };
 
 enum ForkType : uint8_t {
@@ -173,13 +174,11 @@ class TimingSuspendableVisitor final : public VNVisitor {
     };
 
     // NODE STATE
-    //  AstClass::user1()                        -> bool.               Set true if the class
-    //                                                                  member cache has been
-    //                                                                  refreshed.
-    //  Ast{NodeProcedure,CFunc,Begin}::user2()  -> int.                Set to >= T_SUSP if
-    //                                                                  process/task suspendable
-    //                                                                  and to T_PROC if it
-    //                                                                  needs process metadata.
+    //  AstClass::user1() -> bool.  Class member cache has been refreshed.
+    //  Ast{NodeProcedure,CFunc,Begin}::user2()  -> uint64_t.  Set to >= T_SUSP if
+    //                                                         process/task suspendable
+    //                                                         and to T_PROC if it
+    //                                                         needs process metadata.
     //  Ast{NodeProcedure,CFunc,Begin}::user3()  -> DependencyVertex*.  Vertex in m_suspGraph
     //  Ast{NodeProcedure,CFunc,Begin}::user3()  -> DependencyVertex*.  Vertex in m_procGraph
     const VNUser3InUse m_user3InUse;
@@ -1224,6 +1223,7 @@ class TimingControlVisitor final : public VNVisitor {
             AstBegin* beginp = VN_CAST(controlp, Begin);
             if (!beginp) beginp = new AstBegin{nodep->fileline(), "", controlp, false};
             forkp->addForksp(beginp);
+            addFlags(beginp, T_NBA_UPDATE);
             controlp = forkp;
         }
         UASSERT_OBJ(nodep, controlp, "Assignment should have timing control");
@@ -1393,8 +1393,13 @@ class TimingControlVisitor final : public VNVisitor {
             if (constp->isZero()) {
                 // We have to await forever instead of simply returning in case we're deep in a
                 // callstack
-                AstCExpr* const foreverp = new AstCExpr{flp, "VlForever{}"};
-                AstCAwait* const awaitp = new AstCAwait{flp, foreverp};
+                AstCMethodHard* const foreverMethodp = new AstCMethodHard{
+                    flp, new AstVarRef{flp, getCreateDelayScheduler(), VAccess::WRITE},
+                    VCMethod::SCHED_WAIT_FOREVER};
+                foreverMethodp->dtypeSetVoid();
+                addProcessInfo(foreverMethodp);
+                addDebugInfo(foreverMethodp);
+                AstCAwait* const awaitp = new AstCAwait{flp, foreverMethodp};
                 nodep->replaceWith(awaitp);
                 if (stmtsp) VL_DO_DANGLING(stmtsp->deleteTree(), stmtsp);
                 VL_DO_DANGLING(condp->deleteTree(), condp);
@@ -1435,6 +1440,9 @@ class TimingControlVisitor final : public VNVisitor {
         VL_RESTORER(m_procp);
         VL_RESTORER(m_hasProcess);
         m_hasProcess |= hasFlags(nodep, T_HAS_PROC);
+        // A pending NBA update is not a subprocess of the process that scheduled it, so it is
+        // unaffected by 'disable fork' and 'wait fork' (IEEE 1800-2023 9.6.1, 9.6.3)
+        if (hasFlags(nodep, T_NBA_UPDATE)) m_hasProcess = false;
         m_procp = nodep;
         if (m_hasProcess) nodep->setNeedProcess();
         iterateChildren(nodep);
@@ -1460,6 +1468,10 @@ class TimingControlVisitor final : public VNVisitor {
 
             // Name the begin (later the name will be used for a new function)
             itemp->name(nodep->name() + "__" + std::to_string(idx++));
+            if (itemp->needProcess()) {
+                itemp->addStmtsp(
+                    new AstCStmt{itemp->fileline(), "vlProcess->state(VlProcess::FINISHED);"});
+            }
         }
         if (!nodep->joinType().joinNone()) makeForkJoin(nodep);
     }

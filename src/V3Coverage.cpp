@@ -199,6 +199,7 @@ class CoverageVisitor final : public VNVisitor {
             AstVar* const varp = new AstVar{fl_nowarn, VVarType::MODULETEMP, trace_var_name,
                                             incp->findUInt32DType()};
             varp->setIgnoreSchedWrite();  // Ignore the increment output, so no UNOPTFLAT
+            varp->lifetime(VLifetime::STATIC_IMPLICIT);
             varp->trace(true);
             m_modp->addStmtsp(varp);
             UINFO(5, "New coverage trace: " << varp);
@@ -283,7 +284,7 @@ class CoverageVisitor final : public VNVisitor {
         VL_RESTORER_COPY(m_funcTemps);
         createHandle(nodep);
         m_modp = nodep;
-        m_state.m_inModOff = false;  // Haven't made top shell, so tops are real tops
+        m_state.m_inModOff = nodep->isTop();  // Already made top shell, no coverage for it
         if (!origModp) {
             // No blocks cross (non-nested) modules, so save some memory
             m_varnames.clear();
@@ -1053,7 +1054,7 @@ class CoverageVisitor final : public VNVisitor {
                 unrolledp = new T_Oper{fl, selp, unrolledp};
             }
             iterate(unrolledp);
-            pushDeletep(unrolledp);
+            VL_DO_DANGLING(pushDeletep(unrolledp), unrolledp);
         } else {
             iterateChildren(nodep);
             lineTrack(nodep);
@@ -1114,6 +1115,16 @@ class CoverageVisitor final : public VNVisitor {
     }
 
     // VISITORS - BOTH
+    void visit(AstProperty* nodep) override {
+        VL_RESTORER(m_state);
+        m_state.m_on = false;
+        iterateChildren(nodep);
+    }
+    void visit(AstSequence* nodep) override {
+        VL_RESTORER(m_state);
+        m_state.m_on = false;
+        iterateChildren(nodep);
+    }
     void visit(AstNode* nodep) override {
         iterateChildren(nodep);
         lineTrack(nodep);

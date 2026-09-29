@@ -32,6 +32,7 @@ Bagri
 Balboni
 Baltazar
 Bardsley
+Barua
 Benchmarking
 Berman
 Bhagavatula
@@ -304,6 +305,7 @@ Mahmoudy
 Makefile
 Makefiles
 Maksymenko
+Manzoni
 Marche
 Markley
 Marquet
@@ -390,6 +392,7 @@ Preprocess
 Pretet
 Pretl
 Pringlemeir
+Prithayan
 Priyadharshini
 Pullup
 Pulver
@@ -514,6 +517,7 @@ Ueno
 Uints
 Undefine
 Undefines
+Unigen
 Unsized
 Uppal
 Urbach
@@ -624,6 +628,7 @@ benchmarking
 biguint
 binToOneHot
 bindir
+binsof
 biops
 bisonpre
 bitOpTree
@@ -734,6 +739,7 @@ devel
 difftree
 dir
 disambiguates
+discoverability
 displayb
 distcc
 doxygen
@@ -944,6 +950,7 @@ makefile
 makefiles
 malloc
 manpages
+memoization
 metacomment
 metacomments
 miree
@@ -1129,6 +1136,7 @@ shortint
 shortreal
 signame
 signedness
+slp
 sp
 specparam
 splitme
@@ -1179,6 +1187,7 @@ systemc
 taskify
 tcmalloc
 tcmalloc
+teardown
 tenghtt
 testbench
 testbenches
@@ -1252,6 +1261,7 @@ vcddiff
 vcoverage
 vdhotre
 vec
+vectorize
 ventana
 venv
 ver

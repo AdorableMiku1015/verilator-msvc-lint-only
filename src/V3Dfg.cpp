@@ -21,6 +21,7 @@
 #include "V3Ast.h"
 #include "V3EmitV.h"
 #include "V3File.h"
+#include "V3Stats.h"
 
 VL_DEFINE_DEBUG_FUNCTIONS;
 
@@ -31,6 +32,8 @@ DfgGraph::DfgGraph(const string& name)
     : m_name{name} {}
 
 DfgGraph::~DfgGraph() {
+    V3Stats::addStatSum("Optimizations, DFG, temporary declarations reused",
+                        static_cast<double>(m_tempDeclarationsReused));
     forEachVertex([&](DfgVertex& vtx) { vtx.unlinkDelete(*this); });
 }
 
@@ -98,26 +101,31 @@ void DfgGraph::mergeGraphs(std::vector<std::unique_ptr<DfgGraph>>&& otherps) {
     }
 }
 
-std::string DfgGraph::makeUniqueName(const std::string& prefix, size_t n) {
-    // Construct the tmpNameStub if we have not done so yet
-    if (m_tmpNameStub.empty()) {
-        // Use the hash of the graph name (avoid long names and non-identifiers)
-        const std::string hash = V3Hash{m_name}.toString();
-        // We need to keep every variable globally unique, and graph hashed
-        // names might not be, so keep a static table to track multiplicity
-        static std::unordered_map<std::string, uint32_t> s_multiplicity;
-        m_tmpNameStub += '_' + hash + '_' + std::to_string(s_multiplicity[hash]++) + '_';
-    }
-    // Assemble the globally unique name
-    return "__Vdfg" + prefix + m_tmpNameStub + std::to_string(n);
-}
-
-DfgVertexVar* DfgGraph::makeNewVar(FileLine* flp, const std::string& name,
+DfgVertexVar* DfgGraph::makeNewVar(FileLine* flp, const std::string& prefix,
                                    const DfgDataType& dtype, AstScope* scopep) {
-    // Create AstVar
-    AstVar* const varp = new AstVar{flp, VVarType::MODULETEMP, name, dtype.astDtypep()};
-    // Add AstVar to the scope's module
-    scopep->modp()->addStmtsp(varp);
+    // AstVar declarations outlive all DFG graphs. Splitting or merging graphs
+    // does not transfer slots: each graph creates globally unique declarations.
+    TempDeclarations& temps = m_temporaries[scopep->modp()][{prefix, dtype.astDtypep()}];
+    const size_t slot = temps.m_scopeCounts[scopep]++;
+    AstVar* varp;
+    if (slot == temps.m_declps.size()) {
+        // Construct the name stub on the first new declaration in this graph
+        if (m_tmpNameStub.empty()) {
+            // Use the hash of the graph name (avoid long names and non-identifiers)
+            const std::string hash = V3Hash{m_name}.toString();
+            // Graph hashes may collide, so track multiplicity to keep names globally unique
+            static std::unordered_map<std::string, uint32_t> s_multiplicity;
+            m_tmpNameStub += '_' + hash + '_' + std::to_string(s_multiplicity[hash]++) + '_';
+        }
+        const std::string varName
+            = "__Vdfg" + prefix + m_tmpNameStub + std::to_string(m_tmpNameCount++);
+        varp = new AstVar{flp, VVarType::MODULETEMP, varName, dtype.astDtypep()};
+        scopep->modp()->addStmtsp(varp);
+        temps.m_declps.emplace_back(varp);
+    } else {
+        varp = temps.m_declps[slot];
+        ++m_tempDeclarationsReused;
+    }
     // Create AstVarScope
     AstVarScope* const vscp = new AstVarScope{flp, scopep, varp};
     // Add to scope
@@ -473,8 +481,11 @@ DfgGraph::neighborhood(const std::vector<const DfgVertex*>& vtxps, size_t n) con
 //------------------------------------------------------------------------------
 // DfgVertex
 
-DfgVertex::DfgVertex(DfgGraph& dfg, VDfgType type, FileLine* flp, const DfgDataType& dt)
-    : m_filelinep{flp}
+DfgVertex::DfgVertex(DfgGraph& dfg, VDfgType type, FileLine* flp, const DfgDataType& dt,
+                     DfgEdge* inlineInputsp, uint32_t nInputs)
+    : m_inlineInputsp{inlineInputsp}
+    , m_nInputs{nInputs}
+    , m_filelinep{flp}
     , m_dtype{dt}
     , m_type{type} {
     dfg.addVertex(*this);
@@ -791,19 +802,18 @@ AstScope* DfgVertex::scopep(ScopeCache& cache, bool tryResultVar) VL_MT_DISABLED
     }
 
     AstScope* const rootp = v3Global.rootp()->topScopep()->scopep();
-    AstScope* const constPoolp = v3Global.rootp()->constPoolp()->scopep();
 
     // Note: the recursive invocation can cause a re-hash but that will not invalidate references
     AstScope*& resultr = cache[this];
     if (!resultr) {
         // Mark to prevent infinite recursion on circular graphs - should never be called on such
         resultr = reinterpret_cast<AstScope*>(1);
-        // Find scope based on sources, falling back on the root scope,
-        // also make sure it's not the constant pool scope, which is special.
+        // Find scope based on sources, falling back on the root scope. Never use a package
+        // scope, including the constant pool, so new variables are not created in packages.
         AstScope* foundp = nullptr;
         foreachSource([&](DfgVertex& src) {
             AstScope* const scp = src.scopep(cache, true);
-            if (scp != rootp && scp != constPoolp) {
+            if (scp != rootp && !VN_IS(scp->modp(), Package)) {
                 foundp = scp;
                 return true;
             }
@@ -827,6 +837,47 @@ void DfgVertex::unlinkDelete(DfgGraph& dfg) {
     dfg.removeVertex(*this);
     // Delete - this will unlink sources
     delete this;
+}
+
+//------------------------------------------------------------------------------
+// DfgVertexVar
+
+std::pair<DfgVertex*, uint32_t> DfgVertexVar::driverOfRange(uint32_t lo, uint32_t size) {
+    DfgVertex* const srcp = this->srcp();
+    // Not driven at all
+    if (!srcp) return {nullptr, 0};
+    // If volatile, can have other drivers
+    if (isVolatile()) return {nullptr, 0};
+    // Don't inline CReset
+    if (srcp->is<DfgCReset>()) return {nullptr, 0};
+
+    // If not driven via a splice, then it is driven whole, at the same offsets
+    DfgVertexSplice* const splicep = srcp->cast<DfgVertexSplice>();
+    if (!splicep) return {srcp, lo};
+
+    // Find the driver that covers the whole searched range, if there is a single one
+    const uint32_t hi = lo + size - 1;
+    DfgVertex* driverp = nullptr;
+    uint32_t driverLo = 0;
+    bool useDefault = defaultp();
+    splicep->foreachDriver([&](DfgVertex& src, const uint32_t dLo) {
+        const uint32_t dHi = dLo + src.size() - 1;
+        // Note whether it overlaps the searched range, so the default cannot be used
+        if (dLo <= hi && lo <= dHi) useDefault = false;
+        // If it does not cover the whole searched range, move on
+        if (lo < dLo || dHi < hi) return false;
+        // Save the driver that covers the whole searched range
+        driverp = &src;
+        driverLo = dLo;
+        return true;
+    });
+
+    // If a single driver covers the searched range, it is the one
+    if (driverp) return {driverp, lo - driverLo};
+    // Otherwise the default driver is responsible for it, if nothing else overlaps it
+    if (useDefault) return {defaultp(), lo};
+    // Not driven by a single vertex
+    return {nullptr, 0};
 }
 
 //######################################################################

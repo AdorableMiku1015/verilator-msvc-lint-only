@@ -26,7 +26,7 @@ VL_DEFINE_DEBUG_FUNCTIONS;
 
 class StackCountVisitor final : public VNVisitorConst {
     // NODE STATE
-    //  AstNode::user2()        -> int.  Path cost + 1,
+    //  AstNode::user2()        -> uint64_t.  Path cost + 1,
     const VNUser2InUse m_inuser2;
 
     // MEMBERS
@@ -39,9 +39,9 @@ class StackCountVisitor final : public VNVisitorConst {
     // Little class to cleanly call startVisitBase/endVisitBase
     class VisitBase final {
         // MEMBERS
-        uint32_t m_savedCount;
-        AstNode* const m_nodep;
-        StackCountVisitor* const m_visitor;
+        uint32_t m_savedCount;  // Count before visit applied
+        AstNode* const m_nodep;  // Node this RAII helper is visiting
+        StackCountVisitor* const m_visitor;  // Visitor whose start/endVisitBase are called
 
     public:
         // CONSTRUCTORS

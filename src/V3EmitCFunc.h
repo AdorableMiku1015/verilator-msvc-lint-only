@@ -85,9 +85,7 @@ class EmitCLazyDecls final : public VNVisitorConst {
     void visit(AstVarRef* nodep) override {
         AstVar* const varp = nodep->varp();
         // Only constant pool symbols are lazy declared for now ...
-        if (EmitCUtil::isConstPoolMod(EmitCParentModule::get(varp))) {
-            lazyDeclareConstPoolVar(varp);
-        }
+        if (EmitCParentModule::get(varp)->isConstPool()) lazyDeclareConstPoolVar(varp);
     }
 
     void visit(AstNode* nodep) override { iterateChildrenConst(nodep); }
@@ -262,7 +260,6 @@ public:
                                const string& suffix, const AstNode* valuep);
     void emitVarResetScopeHash();
     void emitChangeDet();
-    void emitConstInit(AstNode* initp) { iterateConst(initp); }
     void putCommaIterateNext(AstNode* nodep, bool comma = false) {
         for (AstNode* subnodep = nodep; subnodep; subnodep = subnodep->nextp()) {
             if (comma) puts(", ");
@@ -808,6 +805,21 @@ public:
         if (nodep->method() == VCMethod::FORCE_READ_SEL) {
             emitIQW(nodep);
             if (nodep->isWide()) puts("<" + cvtToStr(nodep->dtypep()->widthWords()) + ">");
+        } else if (nodep->method() == VCMethod::ARRAY_SLICE) {
+            // VlUnpacked::slice<N_Out>(loIdx) - N_Out is the (fixed) result array size
+            const AstUnpackArrayDType* const adtypep
+                = VN_AS(nodep->dtypep()->skipRefp(), UnpackArrayDType);
+            puts("<" + cvtToStr(adtypep->elementsConst()) + ">");
+        } else if (nodep->method() == VCMethod::COVERGROUP_ADD_COVERPOINT) {
+            // The hit-list bound is a template argument of the returned VlCoverpointT<>, and the
+            // node's own dtype is that type, so it is the one source of truth for both.
+            const AstCoverpointDType* const cpdtypep
+                = VN_AS(nodep->dtypep()->skipRefp(), CoverpointDType);
+            puts("<" + cvtToStr(cpdtypep->hitBound()) + ">");
+        } else if (nodep->method() == VCMethod::COVERGROUP_ADD_CROSS) {
+            const AstCoverCrossDType* const cxdtypep
+                = VN_AS(nodep->dtypep()->skipRefp(), CoverCrossDType);
+            puts("<" + cxdtypep->cppTemplateArgs() + ">");
         }
         puts("(");
         bool comma = false;
@@ -1776,7 +1788,7 @@ public:
         const bool dereferenceCovergroupRef
             = varp->covergroupRefMember() && nodep->access().isReadOrRW();
         if (dereferenceCovergroupRef) putns(nodep, "(*");
-        if (EmitCUtil::isConstPoolMod(varModp)) {
+        if (varModp->isConstPool()) {
             // Reference to constant pool variable
             putns(nodep, EmitCUtil::topClassName() + "__ConstPool__");
         } else if (varp->isStatic()) {

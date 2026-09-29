@@ -674,10 +674,38 @@ void VlRandomVar::set(const std::string& idx, const std::string& val) const {
     }
 }
 
-void VlRandomizer::randomConstraint(std::ostream& os, VlRNG& rngr, int bits) {
-    const IData hash = VL_RANDOM_RNG_I(rngr) & ((1 << bits) - 1);
+void VlRandomizer::randomConstraint(std::ostream& os, VlRNG& rngr, int bits,
+                                    const std::vector<std::string>* layerVarsp) {
+    // layerVarsp scopes sampling to the current phase's own layer, so a
+    // phased solve's diversity constraint can't be built entirely out of a
+    // later phase's (still-unsolved) variable instead of this one's.
+    std::vector<const VlRandomVar*>& vars = m_randomConstraintVars;
+    vars.clear();
     int varBits = 0;
-    for (const auto& var : m_vars) varBits += var.second->totalWidth();
+    if (layerVarsp) {
+        for (const auto& name : *layerVarsp) {
+            const auto it = m_vars.find(name);
+            // buildSolveLayers() only ever adds a name after confirming
+            // it's already in m_vars.
+            assert(it != m_vars.end());
+            vars.push_back(it->second.get());
+            varBits += it->second->totalWidth();
+        }
+    } else {
+        for (const auto& var : m_vars) {
+            vars.push_back(var.second.get());
+            varBits += var.second->totalWidth();
+        }
+    }
+
+    if (varBits == 0) {
+        // Nothing to sample (e.g. a still-unsized queue/dynamic array, in a
+        // layer or the whole class) -- tautology instead of the degenerate
+        // empty-operand expression the loop below would otherwise build.
+        os << "(= #b1 #b1)";
+        return;
+    }
+    const IData hash = VL_RANDOM_RNG_I(rngr) & ((1 << bits) - 1);
     os << "(= #b";
     for (int i = bits - 1; i >= 0; i--) os << (VL_BITISSET_I(hash, i) ? '1' : '0');
     if (bits > 1) os << " (concat";
@@ -685,11 +713,12 @@ void VlRandomizer::randomConstraint(std::ostream& os, VlRNG& rngr, int bits) {
         IData varBitsLeft = varBits;
         IData varBitsWant = (varBits + 1) / 2;
         if (varBits > 2) os << " (bvxor";
-        for (const auto& var : m_vars) {
-            for (int j = 0; j < var.second->totalWidth(); j++, varBitsLeft--) {
+        for (const auto& varp : vars) {  // LCOV_EXCL_BR_LINE - reservoir-sampling below
+                                         // always forces its last pick before exhausting vars
+            for (int j = 0; j < varp->totalWidth(); j++, varBitsLeft--) {
                 const bool doEmit = (VL_RANDOM_RNG_I(rngr) % varBitsLeft) < varBitsWant;
                 if (doEmit) {
-                    var.second->emitExtract(os, j);
+                    varp->emitExtract(os, j);
                     if (--varBitsWant == 0) break;
                 }
             }
@@ -779,7 +808,7 @@ bool VlRandomizer::next_check_only(VlRNGReseeds& rngr) { return nextRandomize(rn
 bool VlRandomizer::next(VlRNGReseeds& rngr) { return nextRandomize(rngr, false); }
 
 bool VlRandomizer::nextRandomize(VlRNGReseeds& rngr, bool checkOnly) {
-    if (!checkOnly && m_vars.empty() && m_unique_arrays.empty()) return true;
+    if (!checkOnly && m_vars.empty() && m_uniqueArrays.empty()) return true;
     if (checkOnly && m_vars.empty()) return true;  // No rand members: trivially SAT
     VlSolverSession& sess = s_solverSession;
     const VerilatedLockGuard lock{sess.m_mutex};
@@ -814,21 +843,27 @@ bool VlRandomizer::nextRandomize(VlRNGReseeds& rngr, bool checkOnly) {
 
 std::vector<std::string> VlRandomizer::buildUniqueExprs() const {
     std::vector<std::string> exprs;
-    if (m_unique_arrays.empty()) return exprs;
+    if (m_uniqueArrays.empty()) return exprs;
     const auto arrVarsp = std::make_shared<const ArrayInfoMap>(m_arr_vars);
-    for (const std::string& baseName : m_unique_arrays) {
-        const auto it = m_vars.find(baseName);
-        if (it == m_vars.end()) continue;
-        const VlRandomVar& var = *it->second;
-        // Select the elements the array actually holds now, by their own index
-        // or key, rather than by ordinal position
-        var.setArrayInfo(arrVarsp);
-        // 'distinct' needs at least two operands; fewer elements are trivially unique
-        if (var.countMatchingElements(*arrVarsp, baseName) < 2) continue;
+    for (const auto& [key, arrNameVec] : m_uniqueArrays) {
+        uint32_t matchingElementsCount = 0;
+        std::ostringstream varsString;
+
+        for (const auto& baseName : arrNameVec) {
+            const auto it = m_vars.find(baseName);
+            if (it == m_vars.end()) continue;
+            const VlRandomVar& var = *it->second;
+            // Select the elements the array actually holds now, by their own index
+            // or key, rather than by ordinal position
+            var.setArrayInfo(arrVarsp);
+            // 'distinct' needs at least two operands; fewer elements are trivially unique
+            matchingElementsCount += var.countMatchingElements(*arrVarsp, baseName);
+            var.emitGetValue(varsString);
+        }
+
+        if (matchingElementsCount < 2) continue;
         std::ostringstream os;
-        os << "(__Vbv (distinct ";
-        var.emitGetValue(os);
-        os << "))";
+        os << "(__Vbv (distinct " << varsString.str() << "))";
         exprs.push_back(os.str());
     }
     return exprs;
@@ -1577,7 +1612,7 @@ void VlRandomizer::clearConstraints() {
     m_constraints_line.clear();
     m_solveBefore.clear();
     m_softConstraints.clear();
-    m_unique_arrays.clear();  // Re-registered by constraint setup
+    m_uniqueArrays.clear();  // Re-registered by constraint setup
     // Keep m_vars for class member randomization
 }
 
@@ -1590,7 +1625,7 @@ void VlRandomizer::clearAll() {
     m_randcConstraintHash = 0;
 }
 
-void VlRandomizer::markRandc(const char* name) { m_randcVarNames.insert(name); }
+void VlRandomizer::markRandc(const std::string& name) { m_randcVarNames.insert(name); }
 
 void VlRandomizer::solveBefore(const std::string& beforeName, const std::string& afterName) {
     m_solveBefore.emplace_back(beforeName, afterName);
@@ -1748,8 +1783,9 @@ bool VlRandomizer::solvePhaseValues(VlSolverSession& sess, VlRNG& rngr,
 
     // Try diversity: add random constraint, re-check. If sat, get
     // updated (more diverse) values. If unsat, keep baseline values.
+    // Scoped to this layer's own vars -- see randomConstraint's comment.
     os << "(assert ";
-    randomConstraint(os, rngr, _VL_SOLVER_HASH_LEN);
+    randomConstraint(os, rngr, _VL_SOLVER_HASH_LEN, &layerVars);
     os << ")\n";
     os << "(check-sat)\n";
     if (sess.readStatus() == VlSolverStatus::SAT) {

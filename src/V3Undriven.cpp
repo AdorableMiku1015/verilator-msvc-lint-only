@@ -150,8 +150,13 @@ public:
         m_wholeFlags[FLAG_DRIVEN] = true;
     }
     void drivenWhole(const AstNodeVarRef* nodep, bool ftaskDef) {
-        m_ftaskDriven = ftaskDef && !isDrivenWhole();
+        const bool wasDriven = isDrivenWhole();
         drivenWhole(nodep);
+        // A write in a task/function definition is not an executed process, so it must not
+        // displace an already recorded write, nor clear the flag that keeps such a write
+        // from being reported as the other write of a MULTIDRIVEN
+        if (ftaskDef && wasDriven) return;
+        m_ftaskDriven = ftaskDef;
         m_nodep = nodep;
     }
     void drivenAlwaysCombWhole(const AstAlways* alwCombp) {
@@ -691,7 +696,7 @@ class UndrivenVisitor final : public VNVisitorConst {
                     }
                     warnClockingDriven(nodep, entryp, otherWritep, otherWriteIsStaticInit);
                 }
-                if (multidrivenCommon
+                if (multidrivenCommon && !nodep->varp()->isUsedLoopIdx()
                     && !nodep->varp()->fileline()->warnIsOff(V3ErrorCode::MULTIDRIVENPROC)) {
                     // Two plain always blocks driving the whole signal: legal
                     // SystemVerilog, but a driver conflict for synthesis. The

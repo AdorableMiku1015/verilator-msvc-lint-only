@@ -196,6 +196,7 @@ RAW_OBJS = \
   V3GraphPathChecker.o \
   V3GraphTest.o \
   V3Hash.o \
+  V3HashTable.o \
   V3OptionParser.o \
   V3Os.o \
   V3ParseGrammar.o \
@@ -212,6 +213,7 @@ RAW_OBJS_PCH_ASTMT = \
   V3Ast.o \
   V3AstNodes.o \
   V3Broken.o \
+  V3ConstPool.o \
   V3Control.o \
   V3EmitCBase.o \
   V3EmitCConstPool.o \
@@ -330,6 +332,7 @@ RAW_OBJS_PCH_ASTNOMT = \
   V3Sampled.o \
   V3Sched.o \
   V3SchedAcyclic.o \
+  V3SchedCovergroup.o \
   V3SchedPartition.o \
   V3SchedReplicate.o \
   V3SchedTiming.o \

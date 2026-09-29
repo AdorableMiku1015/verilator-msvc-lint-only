@@ -324,6 +324,7 @@ class AssertVisitor final : public VNVisitor {
     VDouble0 m_statLiftedCaseExprs;  // Count of purified case expressions
     AstNodeFTask* m_ftaskp = nullptr;  // Current function/task
     V3UniqueNames m_caseTempNames{"__VCase"};
+    V3UniqueNames m_matchCountNames{"__VnfaRemainingMatchCount"};  // Match replay counter names
     // Maps from (expression, senTree) to the AstAlways that computes its delayed values.
     std::unordered_map<VNRef<AstNodeExpr>, std::unordered_map<VNRef<AstSenTree>, AstAlways*>>
         m_modExpr2Sen2DelayedAlwaysp;
@@ -433,20 +434,20 @@ class AssertVisitor final : public VNVisitor {
         if (!m_monitorNumVarp) {
             m_monitorNumVarp = new AstVar{nodep->fileline(), VVarType::MODULETEMP, "__VmonitorNum",
                                           nodep->findUInt64DType()};
-            v3Global.rootp()->dollarUnitPkgAddp()->addStmtsp(m_monitorNumVarp);
+            v3Global.rootp()->dollarUnitPkgp()->addStmtsp(m_monitorNumVarp);
         }
         AstVarRef* const varrefp = new AstVarRef{nodep->fileline(), m_monitorNumVarp, access};
-        varrefp->classOrPackagep(v3Global.rootp()->dollarUnitPkgAddp());
+        varrefp->classOrPackagep(v3Global.rootp()->dollarUnitPkgp());
         return varrefp;
     }
     AstVarRef* newMonitorOffVarRefp(const AstNode* nodep, VAccess access) {
         if (!m_monitorOffVarp) {
             m_monitorOffVarp = new AstVar{nodep->fileline(), VVarType::MODULETEMP, "__VmonitorOff",
                                           nodep->findBitDType()};
-            v3Global.rootp()->dollarUnitPkgAddp()->addStmtsp(m_monitorOffVarp);
+            v3Global.rootp()->dollarUnitPkgp()->addStmtsp(m_monitorOffVarp);
         }
         AstVarRef* const varrefp = new AstVarRef{nodep->fileline(), m_monitorOffVarp, access};
-        varrefp->classOrPackagep(v3Global.rootp()->dollarUnitPkgAddp());
+        varrefp->classOrPackagep(v3Global.rootp()->dollarUnitPkgp());
         return varrefp;
     }
     static AstIf* newIfAssertOn(AstNode* bodyp, VAssertDirectiveType directiveType,
@@ -749,11 +750,11 @@ class AssertVisitor final : public VNVisitor {
             // reaches zero.
             matchCountp->unlinkFrBack();
             AstVar* const remainingp = new AstVar{
-                flp, VVarType::BLOCKTEMP, "__VnfaRemainingMatchCount", matchCountp->dtypep()};
-            remainingp->lifetime(VLifetime::AUTOMATIC_EXPLICIT);
-            AstBegin* const replayp = new AstBegin{flp, "", remainingp, true};
-            replayp->addStmtsp(
-                new AstAssign{flp, new AstVarRef{flp, remainingp, VAccess::WRITE}, matchCountp});
+                flp, VVarType::MODULETEMP, m_matchCountNames.get(""), matchCountp->dtypep()};
+            remainingp->lifetime(VLifetime::STATIC_EXPLICIT);
+            m_modp->addStmtsp(remainingp);
+            AstNode* const replaysp
+                = new AstAssign{flp, new AstVarRef{flp, remainingp, VAccess::WRITE}, matchCountp};
             AstLoop* const loopp = new AstLoop{flp};
             loopp->addStmtsp(
                 new AstLoopTest{flp, loopp, new AstVarRef{flp, remainingp, VAccess::READ}});
@@ -763,8 +764,8 @@ class AssertVisitor final : public VNVisitor {
                               new AstSub{flp, new AstVarRef{flp, remainingp, VAccess::READ},
                                          new AstConst{flp, AstConst::WidthedValue{},
                                                       remainingp->dtypep()->width(), 1}}});
-            replayp->addStmtsp(loopp);
-            passsp = replayp;
+            replaysp->addNext(loopp);
+            passsp = replaysp;
         }
         AstNode* bodysp = assertBody(nodep, propExprp, passsp, failsp);
         if (disablep) bodysp = new AstIf{flp, new AstLogNot{flp, disablep}, bodysp};
@@ -1256,9 +1257,9 @@ class AssertVisitor final : public VNVisitor {
 
         bool assertTypeConst = true;
         if (!nodep->assertTypesp()) {
-            nodep->ctlAssertTypes(VAssertType{ALL_ASSERT_TYPES});
+            nodep->assertTypes(VAssertType{ALL_ASSERT_TYPES});
         } else if (const AstConst* const assertTypesp = VN_CAST(nodep->assertTypesp(), Const)) {
-            nodep->ctlAssertTypes(VAssertType{assertTypesp->toSInt()});
+            nodep->assertTypes(VAssertType{assertTypesp->toSInt()});
         } else {
             assertTypeConst = false;
         }
@@ -1278,9 +1279,9 @@ class AssertVisitor final : public VNVisitor {
             VL_DO_DANGLING(pushDeletep(nodep), nodep);
             return;
         }
-        if (assertTypeConst && nodep->ctlAssertTypes() != ALL_ASSERT_TYPES
-            && nodep->ctlAssertTypes().containsAny(VAssertType::UNIQUE | VAssertType::UNIQUE0
-                                                   | VAssertType::PRIORITY)) {
+        if (assertTypeConst && nodep->assertTypes() != ALL_ASSERT_TYPES
+            && nodep->assertTypes().containsAny(VAssertType::UNIQUE | VAssertType::UNIQUE0
+                                                | VAssertType::PRIORITY)) {
             nodep->v3warn(E_UNSUPPORTED, "Unsupported: assert control assertion_type");
             VL_DO_DANGLING(pushDeletep(nodep->unlinkFrBack()), nodep);
             return;
@@ -1288,11 +1289,11 @@ class AssertVisitor final : public VNVisitor {
 
         bool directiveTypeConst = true;
         if (!nodep->directiveTypesp()) {
-            nodep->ctlDirectiveTypes(VAssertDirectiveType::ASSERT | VAssertDirectiveType::ASSUME
-                                     | VAssertDirectiveType::COVER);
+            nodep->directiveTypes(VAssertDirectiveType::ASSERT | VAssertDirectiveType::ASSUME
+                                  | VAssertDirectiveType::COVER);
         } else if (const AstConst* const directiveTypesp
                    = VN_CAST(nodep->directiveTypesp(), Const)) {
-            nodep->ctlDirectiveTypes(VAssertDirectiveType{directiveTypesp->toSInt()});
+            nodep->directiveTypes(VAssertDirectiveType{directiveTypesp->toSInt()});
         } else {
             directiveTypeConst = false;
         }
@@ -1314,7 +1315,7 @@ class AssertVisitor final : public VNVisitor {
         } else {
             newp->add(std::to_string(ALL_ASSERT_TYPES));
         }
-        newp->add(", " + std::to_string(nodep->ctlDirectiveTypes()) + ");\n");
+        newp->add(", " + std::to_string(nodep->directiveTypes()) + ");\n");
         nodep->replaceWith(newp);
         VL_DO_DANGLING(pushDeletep(nodep), nodep);
     }

@@ -1194,12 +1194,14 @@ inline WDataOutP VL_MUL_W(int words, WDataOutP owp, WDataInP const lwp,
 inline IData VL_MULS_III(int lbits, IData lhs, IData rhs) VL_PURE {
     const int32_t lhs_signed = VL_EXTENDS_II(32, lbits, lhs);
     const int32_t rhs_signed = VL_EXTENDS_II(32, lbits, rhs);
-    return lhs_signed * rhs_signed;
+    // Signed int overflow is undefined behavior, so cast to unsigned first.
+    return static_cast<uint32_t>(lhs_signed) * static_cast<uint32_t>(rhs_signed);
 }
 inline QData VL_MULS_QQQ(int lbits, QData lhs, QData rhs) VL_PURE {
     const int64_t lhs_signed = VL_EXTENDS_QQ(64, lbits, lhs);
     const int64_t rhs_signed = VL_EXTENDS_QQ(64, lbits, rhs);
-    return lhs_signed * rhs_signed;
+    // Signed int overflow is undefined behavior, so cast to unsigned first.
+    return static_cast<uint64_t>(lhs_signed) * static_cast<uint64_t>(rhs_signed);
 }
 
 inline WDataOutP VL_MULS_WWW(int lbits, WDataOutP owp, WDataInP lwp, WDataInP rwp) VL_MT_SAFE {
@@ -1436,8 +1438,8 @@ inline void _vl_insert_WI(WDataOutP iowp, IData ld, int hbit, int lbit, int rbit
             const int nbitsonright = VL_EDATASIZE - loffset;  // bits that end up in lword
             iowp[lword] = (iowp[lword] & ~linsmask) | ((lde << loffset) & linsmask);
             // Prevent unsafe write where lword was final writable location and hword is
-            // out-of-bounds.
-            if (VL_LIKELY(!(hword == rword && roffset == 0))) {
+            // out-of-bounds.  rbits==0 means the caller guarantees bounds.
+            if (VL_LIKELY(!(rbits && hword >= VL_WORDS_I(rbits)))) {
                 iowp[hword]
                     = (iowp[hword] & ~hinsmask) | ((lde >> nbitsonright) & (hinsmask & cleanmask));
             }
@@ -2946,8 +2948,8 @@ inline void VL_ZERO_INIT_QUEUE_ELEM(VlWide<N_Words>& elem) {
     for (size_t j = 0; j < N_Words; ++j) { elem.at(j) = 0; }
 }
 
-// This specialization works for both VlQueue<CData> (and similar) as well
-// as VlQueue<VlWide<N>>.
+// These overloads work for both VlQueue<CData> (and similar) as well
+// as VlQueue<VlWide<N>>, including queues with different element types.
 template <typename T>
 inline void VL_COPY_Q(VlQueue<T>& q, const VlQueue<T>& from, int /*lbits*/, int srcElementBits,
                       int dstElementBits) {
@@ -2969,16 +2971,32 @@ inline void VL_COPY_Q(VlQueue<T>& q, const VlQueue<T>& from, int /*lbits*/, int 
     }
 }
 
-// This specialization works for both VlQueue<CData> (and similar) as well
-// as VlQueue<VlWide<N>>.
-template <typename T>
-inline void VL_REVCOPY_Q(VlQueue<T>& q, const VlQueue<T>& from, int lbits, int srcElementBits,
-                         int dstElementBits) {
+// Keep the same-type overload separate for its direct-copy optimization and alias handling;
+// differently typed queues cannot alias.
+template <typename T_Dst, typename T_Src>
+inline typename std::enable_if<!std::is_same<T_Dst, T_Src>::value>::type
+VL_COPY_Q(VlQueue<T_Dst>& q, const VlQueue<T_Src>& from, int /*lbits*/, int srcElementBits,
+          int dstElementBits) {
+    const size_t srcTotalBits = from.size() * srcElementBits;
+    const size_t dstSize = (srcTotalBits + dstElementBits - 1) / dstElementBits;
+    q.renew(dstSize);
+    for (size_t i = 0; i < dstSize; ++i) { VL_ZERO_INIT_QUEUE_ELEM(q.atWrite(i)); }
+    for (size_t bitIndex = 0; bitIndex < srcTotalBits; ++bitIndex) {
+        VL_SET_QUEUE_BIT(q, dstElementBits, bitIndex,
+                         VL_GET_QUEUE_BIT(from, srcElementBits, bitIndex));
+    }
+}
+
+// This works for both VlQueue<CData> (and similar) as well as VlQueue<VlWide<N>>,
+// including queues with different element types.
+template <typename T_Dst, typename T_Src>
+inline void VL_REVCOPY_Q(VlQueue<T_Dst>& q, const VlQueue<T_Src>& from, int lbits,
+                         int srcElementBits, int dstElementBits) {
     const size_t srcTotalBits = from.size() * srcElementBits;
     const size_t dstSize = (srcTotalBits + dstElementBits - 1) / dstElementBits;
 
     // Always make a copy to handle the case where q and from are the same queue
-    VlQueue<T> srcCopy = from;
+    VlQueue<T_Src> srcCopy = from;
 
     // Initialize all elements to zero using appropriate method
     q.renew(dstSize);

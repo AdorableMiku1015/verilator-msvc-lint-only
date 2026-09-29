@@ -47,8 +47,7 @@ public:
                    const std::string& notFoundName = "") VL_MT_DISABLED;
 
     // Preprocess and read source text supplied directly, rather than a file
-    void parseText(FileLine* fileline, const string& text,
-                   const string& modname) VL_MT_DISABLED;
+    void parseText(FileLine* fileline, const string& text, const string& modname) VL_MT_DISABLED;
 
     // Push preprocessed text to the lexer
     static void ppPushText(V3ParseImp* impp, const string& text) VL_MT_DISABLED;

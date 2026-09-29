@@ -423,8 +423,9 @@ void V3ParseImp::parseText(FileLine* fileline, const string& text, const string&
 
 void V3ParseImp::parsePreprocessed(const string& modfilename, const string& nondirname) {
     // The built-in sources are compiled into the binary, so they are named
-    // <verilated_std> and friends; those names have no file their temporary
-    // output could be written to. -E still prints them, as it prints any input.
+    // <verilated_std> and friends, and a file name cannot hold the angle
+    // brackets; skip the temporary output file they would need. -E is not
+    // affected, as it turns the built-in sources off.
     const bool builtinSource = modfilename == V3Options::getStdPackagePath()
                                || modfilename == V3Options::getStdWaiverPath();
     if (v3Global.opt.preprocOnly() || (v3Global.opt.keepTempFiles() && !builtinSource)) {

@@ -1031,7 +1031,10 @@ void V3Options::notify() VL_MT_DISABLED {
     }
     if (m_preprocOnly) backendFlags.emplace_back("-E");
     if (m_dpiHdrOnly) backendFlags.emplace_back("--dpi-hdr-only");
-    if (m_lintOnly) backendFlags.emplace_back("--lint-only");
+    // --lint-only is implied by this build, so it only counts as the selected
+    // mode when nothing else was asked for; otherwise -E and --json-only could
+    // never be used.
+    if (m_lintOnly && !m_preprocOnly && !m_jsonOnly) backendFlags.emplace_back("--lint-only");
     if (m_jsonOnly) backendFlags.emplace_back("--json-only");
     if (backendFlags.size() > 1) {
         std::string backendFlagsString = backendFlags.front();

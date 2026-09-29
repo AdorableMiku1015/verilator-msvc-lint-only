@@ -2437,3 +2437,10 @@ Summary:
    user-specified directories. This allows '-y "$(pwd)"' to be used if
    absolute filenames are desired for error messages instead of relative
    filenames.
+
+.. option:: -yr <dir>
+
+   Same as :vlopt:`-y <dir>`, except that every subdirectory is searched as
+   well, recursively to any depth. Use this when a module library is
+   organized in a directory hierarchy rather than a single flat directory,
+   so that each level does not need its own :vlopt:`-y <dir>`.

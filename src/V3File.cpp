@@ -32,10 +32,6 @@
 #include <sys/types.h>
 
 // clang-format off
-#if defined(__unix__) || defined(__unix) || (defined(__APPLE__) && defined(__MACH__)) || defined(VL_CPPCHECK)
-# define INFILTER_PIPE  // Allow pipe filtering.  Needs fork()
-#endif
-
 #ifdef HAVE_STAT_NSEC  // i.e. Linux 2.6, from configure
 # define VL_STAT_CTIME_NSEC(stat) ((stat).st_ctim.tv_nsec)  // Nanoseconds
 # define VL_STAT_MTIME_NSEC(stat) ((stat).st_mtim.tv_nsec)  // Nanoseconds
@@ -44,13 +40,7 @@
 # define VL_STAT_MTIME_NSEC(stat) (0)
 #endif
 
-#ifdef INFILTER_PIPE
-# include <sys/wait.h>
-#endif
-
-#if defined(_WIN32) || defined(__MINGW32__)
 # include <io.h>  // open, read, write, close
-#endif
 // clang-format on
 
 VL_DEFINE_DEBUG_FUNCTIONS;
@@ -362,25 +352,12 @@ class VInFilterImp final {
 
     std::map<const std::string, std::string> m_contentsMap;  // Cache of file contents
     bool m_readEof = false;  // Received EOF on read
-#ifdef INFILTER_PIPE
-    pid_t m_pid = 0;  // fork() process id
-#else
-    int m_pid = 0;  // fork() process id - always zero as disabled
-#endif
-    bool m_pidExited = false;  //  waitpid() reaped the filter process
-    int m_pidStatus = 0;  // Exit status of the filter process
-    int m_writeFd = 0;  // File descriptor TO filter
-    int m_readFd = 0;  // File descriptor FROM filter
 
 private:
     // METHODS
 
     bool readContents(const string& filename, StrList& outl) {
-        if (m_pid) {
-            return readContentsFilter(filename, outl);
-        } else {
-            return readContentsFile(filename, outl);
-        }
+        return readContentsFile(filename, outl);
     }
     bool readContentsFile(const string& filename, StrList& outl) {
         const int fd = open(filename.c_str(), O_RDONLY);
@@ -389,40 +366,6 @@ private:
         readBlocks(fd, -1, outl);
         close(fd);
         return true;
-    }
-    // cppcheck-suppress constParameterReference
-    bool readContentsFilter(const string& filename, StrList& outl) {
-        (void)filename;  // Prevent unused variable warning
-        (void)outl;  // Prevent unused variable warning
-#ifdef INFILTER_PIPE
-        writeFilter("read \"" + filename + "\"\n");
-        const string line = readFilterLine();
-        if (line.find("Content-Length") != string::npos) {
-            int len = 0;
-            sscanf(line.c_str(), "Content-Length: %d\n", &len);
-            readBlocks(m_readFd, len, outl);
-            return true;
-        } else {
-            if (line != "") v3error("--pipe-filter protocol error, unexpected: " << line);
-            return false;
-        }
-#else
-        v3fatalSrc("--pipe-filter not implemented on this platform");
-        return false;
-#endif
-    }
-
-    // cppcheck-suppress functionConst
-    void checkFilter(bool hang) {
-#ifdef INFILTER_PIPE
-        if (!m_pidExited && waitpid(m_pid, &m_pidStatus, hang ? 0 : WNOHANG)) {
-            UINFO(1, "--pipe-filter: Exited, status "
-                         << m_pidStatus << " exit=" << WEXITSTATUS(m_pidStatus) << " err"
-                         << std::strerror(errno));
-            m_readEof = true;
-            m_pidExited = true;
-        }
-#endif
     }
 
     void readBlocks(int fd, int size, StrList& outl) {
@@ -433,18 +376,10 @@ private:
             if (size > 0 && size < todo) todo = size;
             errno = 0;
             const ssize_t got = read(fd, buf, todo);
-            // UINFO(9, "RD GOT g " << got << " e " << errno << " " << strerror(errno));
-            // usleep(50*1000);
             if (got > 0) {
                 outl.emplace_back(string(buf, got));
                 sizegot += got;
-            } else if (errno == EINTR || errno == EAGAIN
-#ifdef EWOULDBLOCK
-                       || errno == EWOULDBLOCK
-#endif
-            ) {
-                checkFilter(false);
-                V3Os::u_sleep(1000);
+            } else if (errno == EINTR) {
                 continue;
             } else {
                 m_readEof = true;
@@ -452,147 +387,15 @@ private:
             }
         }
     }
-    // cppverilator-suppress unusedFunction unusedPrivateFunction
-    string readFilterLine() {
-        // Slow, but we don't need it much
-        UINFO(9, "readFilterLine");
-        string line;
-        while (!m_readEof) {
-            StrList outl;
-            readBlocks(m_readFd, 1, outl);
-            const string onechar = listString(outl);
-            line += onechar;
-            if (onechar == "\n") {
-                if (line == "\n") {
-                    line = "";
-                    continue;
-                } else {
-                    break;
-                }
-            }
-        }
-        UINFO(6, "filter-line-in: " << line);
-        return line;
-    }
-    // cppverilator-suppress unusedFunction unusedPrivateFunction
-    void writeFilter(const string& out) {
-        if (debug() >= 6) {
-            UINFO(6, "filter-out: " << out);
-            if (out[out.length() - 1] != '\n') cout << '\n';
-        }
-        if (!m_pid) {
-            v3error("--pipe-filter: write to closed file\n");
-            m_readEof = true;
-            stop();
-        }
-        unsigned offset = 0;
-        while (!m_readEof && out.length() > offset) {
-            errno = 0;
-            const int got = write(m_writeFd, (out.c_str()) + offset, out.length() - offset);
-            // UINFO(9, "WR GOT g " << got << " e " << errno << " " << strerror(errno));
-            // usleep(50*1000);
-            if (got > 0) {
-                offset += got;
-            } else if (errno == EINTR || errno == EAGAIN
-#ifdef EWOULDBLOCK
-                       || errno == EWOULDBLOCK
-#endif
-            ) {
-                checkFilter(false);
-                V3Os::u_sleep(1000);
-                continue;
-            } else {
-                break;
-            }
-        }
-    }
 
     // Start the filter
     void start(const string& command) {
-        if (command == "") {
-            m_pid = 0;  // Disabled
-        } else {
-            startFilter(command);
+        if (command != "") {
+            v3error("Unsupported: --pipe-filter is not available in this lint-only build");
         }
     }
-    void startFilter(const string& command) {
-        (void)command;  // Prevent Unused variable warning
-#ifdef INFILTER_PIPE
-        int fd_stdin[2];  // Can't use std::array
-        int fd_stdout[2];  // Can't use std::array
-        constexpr int P_RD = 0;
-        constexpr int P_WR = 1;
 
-        if (VL_UNCOVERABLE(pipe(fd_stdin) != 0 || pipe(fd_stdout) != 0))
-            v3fatal("--pipe-filter: Can't pipe: " << std::strerror(errno));  // LCOV_EXCL_LINE
-        if (fd_stdin[P_RD] <= 2 || fd_stdin[P_WR] <= 2 || fd_stdout[P_RD] <= 2
-            || fd_stdout[P_WR] <= 2) {
-            // We'd have to rearrange all of the FD usages in this case.
-            // Too unlikely; verilator isn't a daemon.
-            v3fatal("--pipe-filter: stdin/stdout closed before pipe opened\n");
-        }
-
-        UINFO(1, "--pipe-filter: /bin/sh -c " << command);
-
-        const pid_t pid = fork();
-        if (VL_UNCOVERABLE(pid < 0))
-            v3fatal("--pipe-filter: fork failed: " << std::strerror(errno));  // LCOV_EXCL_LINE
-        if (pid == 0) {  // Child
-            UINFO(6, "In child");
-            close(fd_stdin[P_WR]);
-            dup2(fd_stdin[P_RD], 0);
-            close(fd_stdout[P_RD]);
-            dup2(fd_stdout[P_WR], 1);
-            // And stderr comes from parent
-
-            execl("/bin/sh", "sh", "-c", command.c_str(), static_cast<char*>(nullptr));
-            // Don't use v3fatal, we don't share the common structures any more
-            fprintf(stderr, "--pipe-filter: exec failed: %s\n", std::strerror(errno));
-            _exit(1);
-        } else {  // Parent
-            UINFO(6, "In parent, child pid " << pid << " stdin " << fd_stdin[P_WR] << "->"
-                                             << fd_stdin[P_RD] << " stdout " << fd_stdout[P_WR]
-                                             << "->" << fd_stdout[P_RD]);
-            m_pid = pid;
-            m_pidExited = false;
-            m_pidStatus = 0;
-            m_writeFd = fd_stdin[P_WR];
-            m_readFd = fd_stdout[P_RD];
-            m_readEof = false;
-
-            close(fd_stdin[P_RD]);
-            close(fd_stdout[P_WR]);
-
-            int flags = fcntl(m_readFd, F_GETFL, 0);
-            fcntl(m_readFd, F_SETFL, flags | O_NONBLOCK);
-
-            flags = fcntl(m_writeFd, F_GETFL, 0);
-            fcntl(m_writeFd, F_SETFL, flags | O_NONBLOCK);
-        }
-        UINFO(6, "startFilter complete");
-#else
-        v3fatalSrc("--pipe-filter not implemented on this platform");
-#endif
-    }
-
-    void stop() {
-        if (m_pid) stopFilter();
-    }
-    void stopFilter() {
-        UINFO(6, "Stopping filter process");
-#ifdef INFILTER_PIPE
-        close(m_writeFd);
-        checkFilter(true);
-        if (!WIFEXITED(m_pidStatus) || WEXITSTATUS(m_pidStatus) != 0) {
-            v3fatal("--pipe-filter returned bad status");
-        }
-        m_pid = 0;
-        close(m_readFd);
-        UINFO(6, "Closed");
-#else
-        v3fatalSrc("--pipe-filter not implemented on this platform");
-#endif
-    }
+    void stop() {}
 
 protected:
     friend class VInFilter;

@@ -266,13 +266,12 @@ void V3Stats::summaryReport() {
 
     const double walltime = V3Stats::getStatSum(STAT_WALLTIME);
     const double walltimeElab = V3Stats::getStatSum(STAT_WALLTIME_ELAB);
-    const double walltimeCvt = V3Stats::getStatSum(STAT_WALLTIME_CVT);
-    const double walltimeBuild = V3Stats::getStatSum(STAT_WALLTIME_BUILD);
     const double cputime = V3Stats::getStatSum(STAT_CPUTIME);
-    std::cout << "- Verilator: Walltime " << walltime << " s (elab=" << walltimeElab
-              << ", cvt=" << walltimeCvt << ", bld=" << walltimeBuild << "); cpu " << cputime
-              << " s on " << std::max(v3Global.opt.verilateJobs(), v3Global.opt.buildJobs())
-              << " threads";
+    // Conversion and build times are always zero now that nothing is emitted or
+    // built, so they are not reported.
+    std::cout << "- Verilator: Walltime " << walltime << " s (elab=" << walltimeElab << "); cpu "
+              << cputime << " s on "
+              << std::max(v3Global.opt.verilateJobs(), v3Global.opt.buildJobs()) << " threads";
     uint64_t memPeak;
     uint64_t memCurrent;
     VlOs::memUsageBytes(memPeak /*ref*/, memCurrent /*ref*/);

@@ -557,16 +557,15 @@ The search paths can be configured by setting some variables:
 Verilation Summary Report
 =========================
 
-When Verilator generates code, unless :vlopt:`--quiet-stats` is used, it
-will print a report to stdout summarizing the build. For example:
+When Verilator lints, unless :vlopt:`--quiet-stats` is used, it
+will print a report to stdout summarizing the run. For example:
 
 .. code-block::
 
    - V e r i l a t i o n   R e p o r t: Verilator ....
-   - Verilator: Built from 354 MB sources in 247 modules,
-       into 74 MB in 89 C++ files needing 0.192 MB
-   - Verilator: Walltime 26.580 s (elab=2.096, cvt=18.268,
-       bld=2.100); cpu 26.548 s on 1 threads; allocated 2894.672 MB
+   - Verilator: Linted 354 MB sources in 247 modules
+   - Verilator: Walltime 26.580 s (elab=2.096); cpu 26.548 s on 1
+       threads; allocated 2894.672 MB
 
 The information in this report is:
 
@@ -584,34 +583,13 @@ The information in this report is:
    Number of interfaces/modules/classes/packages in design before
    elaboration.
 
-.. describe:: "into 74 MB"
-
-   Characters of output C++ code, including comments in megabytes.
-
-.. describe:: "89 C++ files"
-
-   Number of .cpp files created.
-
-.. describe:: "needing 192MB"
-
-   Verilation-time minimum-bound estimate of memory needed to run model in
-   megabytes. (Expect to need significantly more.)
-
 .. describe:: "Walltime 26.580 s"
 
-   Real elapsed wall time for Verilation and build.
+   Real elapsed wall time for linting.
 
 .. describe:: "elab=2.096"
 
    Wall time to read in files and complete elaboration.
-
-.. describe:: "cvt=18.268"
-
-   Wall time for Verilator to process and write output.
-
-.. describe:: "bld=2.1"
-
-   Wall time to compile gcc/clang (if using :vlopt:`--build`).
 
 .. describe:: "cpu 22.548 s"
 

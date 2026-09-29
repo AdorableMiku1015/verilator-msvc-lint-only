@@ -1006,12 +1006,21 @@ void V3Options::notify() VL_MT_DISABLED {
     // not exist, so refuse the options that select them instead of accepting the
     // argument and then producing nothing.
     if (outFormatOk() || dpiHdrOnly()) {
-        cmdfl->v3error("Unsupported: this is a lint-only Verilator; --cc, --sc, --sp and "
+        cmdfl->v3error("Unsupported: this is a lint-only Verilator; --cc, --sc and "
                        "--dpi-hdr-only are not available");
     }
-    if (m_build) {
+    if (m_build || m_exe || m_main || !m_libCreate.empty() || m_hierarchical || m_hierChild
+        || !m_hierBlocks.empty()) {
         cmdfl->v3error("Unsupported: this is a lint-only Verilator; --build, --binary, --exe, "
                        "--main, --lib-create and --hierarchical are not available");
+    }
+    if (m_savable || m_protectIds) {
+        cmdfl->v3error("Unsupported: this is a lint-only Verilator; --savable, --protect-lib and "
+                       "--protect-ids are not available");
+    }
+    if (m_skipIdentical.isTrue()) {
+        cmdfl->v3error("Unsupported: this is a lint-only Verilator; --skip-identical is not "
+                       "available");
     }
     // Linting is the only thing this build can do, so it is always on.
     m_lintOnly = true;

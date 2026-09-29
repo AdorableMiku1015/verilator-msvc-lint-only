@@ -14,11 +14,14 @@ The following arguments may be passed to the "verilator" executable.
    SystemVerilog, and stops before the passes that build a schedulable C++
    model. :vlopt:`--lint-only` is therefore implied, and the options that
    select a model output are rejected rather than silently ignored:
-   :vlopt:`--cc`, :vlopt:`--sc`, :vlopt:`--dpi-hdr-only`,
-   :vlopt:`--build`, :vlopt:`--binary`, :vlopt:`--exe`, :vlopt:`--main`,
-   :vlopt:`--lib-create` and :vlopt:`--hierarchical`. Diagnostics that can
+   :vlopt:`--cc`, :vlopt:`--sc`, :vlopt:`--dpi-hdr-only`, :vlopt:`--build`,
+   :vlopt:`--binary`, :vlopt:`--exe`, :vlopt:`--main`,
+   :vlopt:`--lib-create`, :vlopt:`--hierarchical`, :vlopt:`--savable`,
+   :vlopt:`--protect-lib` and :vlopt:`--protect-ids`. Diagnostics that can
    only be computed while building the model, notably
-   :vlopt:`UNOPTFLAT`, are not reported either.
+   :vlopt:`UNOPTFLAT`, are not reported either. Options that only tune the
+   removed passes, such as :vlopt:`-ftable`, are accepted and have no
+   effect.
 
 Summary:
 

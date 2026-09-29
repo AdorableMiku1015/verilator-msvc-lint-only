@@ -22,7 +22,6 @@
 #include "V3EmitV.h"
 #include "V3Error.h"
 #include "V3File.h"
-#include "V3HierBlock.h"
 #include "V3LibMap.h"
 #include "V3LinkCells.h"
 #include "V3Parse.h"
@@ -60,7 +59,6 @@ void V3Global::boot() {
 
 void V3Global::shutdown() {
     V3PreShell::shutdown();
-    VL_DO_CLEAR(delete m_hierGraphp, m_hierGraphp = nullptr);  // delete nullptr is safe
     VL_DO_CLEAR(delete m_threadPoolp, m_threadPoolp = nullptr);  // delete nullptr is safe
     VL_DO_CLEAR(delete m_libMapp, m_libMapp = nullptr);  // delete nullptr is safe
     VL_DO_CLEAR(delete m_constPoolp, m_constPoolp = nullptr);  // delete nullptr is safe

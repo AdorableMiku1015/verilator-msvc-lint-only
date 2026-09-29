@@ -39,7 +39,6 @@
 
 class AstNetlist;
 class V3ConstPool;
-class V3HierGraph;
 class V3LibMap;
 class V3ThreadPool;
 
@@ -167,8 +166,6 @@ class V3Global final {
     AstNetlist* m_rootp = nullptr;
     // Constant pool lookup, see V3ConstPool.h
     V3ConstPool* m_constPoolp = nullptr;
-    // Hierarchical block graph (plan) iff hierarchical verilation is performed
-    V3HierGraph* m_hierGraphp = nullptr;
     // Thread Pool, nullptr unless 'verilatedJobs' is known, set via threadPoolp(V3ThreadPool*)
     V3ThreadPool* m_threadPoolp = nullptr;
     // Library Mapping, nullptr unless --libmap is used
@@ -284,8 +281,6 @@ public:
     void setUsesForce() { m_usesForce = true; }
     bool hasSystemCSections() const VL_MT_SAFE { return m_hasSystemCSections; }
     void setHasSystemCSections() { m_hasSystemCSections = true; }
-    V3HierGraph* hierGraphp() const { return m_hierGraphp; }
-    void hierGraphp(V3HierGraph* graphp) { m_hierGraphp = graphp; }
     bool useParallelBuild() const { return m_useParallelBuild; }
     void useParallelBuild(bool flag) { m_useParallelBuild = flag; }
     bool useRandSequence() const { return m_useRandSequence; }

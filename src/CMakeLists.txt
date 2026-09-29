@@ -40,7 +40,6 @@ endmacro()
 
 set(HEADERS
     V3Active.h
-    V3ActiveTop.h
     V3Assert.h
     V3AssertNfa.h
     V3AssertPre.h
@@ -54,19 +53,12 @@ set(HEADERS
     V3AstPatterns.h
     V3AstUserAllocator.h
     V3Begin.h
-    V3Branch.h
     V3Broken.h
-    V3CCtors.h
-    V3CUse.h
     V3Case.h
-    V3Cast.h
     V3Cfg.h
     V3Class.h
     V3ClassGraph.h
     V3Clean.h
-    V3Clock.h
-    V3Combine.h
-    V3Common.h
     V3Const.h
     V3ConstPool.h
     V3Container.h
@@ -77,9 +69,6 @@ set(HEADERS
     V3Dead.h
     V3DebugBisect.h
     V3Delayed.h
-    V3Depth.h
-    V3DepthBlock.h
-    V3Descope.h
     V3Dfg.h
     V3DfgCache.h
     V3DfgContext.h
@@ -90,23 +79,15 @@ set(HEADERS
     V3DfgVertices.h
     V3DiagSarif.h
     V3DupFinder.h
-    V3EmitC.h
     V3EmitCBase.h
-    V3EmitCConstInit.h
-    V3EmitCFunc.h
-    V3EmitCMain.h
-    V3EmitMk.h
-    V3EmitMkJson.h
     V3EmitV.h
     V3Error.h
     V3ExecGraph.h
-    V3Expand.h
     V3File.h
     V3FileLine.h
     V3Force.h
     V3FsmDetect.h
     V3Fork.h
-    V3FuncOpt.h
     V3FunctionTraits.h
     V3Gate.h
     V3Global.h
@@ -117,16 +98,13 @@ set(HEADERS
     V3Hash.h
     V3HashTable.h
     V3Hasher.h
-    V3HierBlock.h
     V3Inline.h
-    V3InlineCFuncs.h
     V3Inst.h
     V3InstrCount.h
     V3Interface.h
     V3LangCode.h
     V3LanguageWords.h
     V3Life.h
-    V3LifePost.h
     V3LiftExpr.h
     V3LinkCells.h
     V3LinkDot.h
@@ -139,20 +117,13 @@ set(HEADERS
     V3LinkResolve.h
     V3LinkWith.h
     V3List.h
-    V3Localize.h
     V3MemberMap.h
-    V3MergeCond.h
     V3Mutex.h
     V3Name.h
     V3Name.h
     V3Number.h
     V3OptionParser.h
     V3Options.h
-    V3Order.h
-    V3OrderGraph.h
-    V3OrderInternal.h
-    V3OrderMoveGraph.h
-    V3OrderMTaskGraph.h
     V3Os.h
     V3PairingHeap.h
     V3Param.h
@@ -166,14 +137,10 @@ set(HEADERS
     V3PreProc.h
     V3PreShell.h
     V3Premit.h
-    V3ProtectLib.h
     V3RandSequence.h
     V3Randomize.h
-    V3Reloop.h
     V3Reorder.h
     V3Rtti.h
-    V3Sampled.h
-    V3Sched.h
     V3Scope.h
     V3SenExprBuilder.h
     V3SenTree.h
@@ -185,14 +152,10 @@ set(HEADERS
     V3Stats.h
     V3StdFuture.h
     V3String.h
-    V3Subst.h
     V3SymTable.h
-    V3Table.h
     V3Task.h
     V3ThreadPool.h
     V3Timing.h
-    V3Trace.h
-    V3TraceDecl.h
     V3Tristate.h
     V3Udp.h
     V3Undriven.h
@@ -200,7 +163,6 @@ set(HEADERS
     V3UniqueNames.h
     V3Unknown.h
     V3Unroll.h
-    V3VariableOrder.h
     V3Waiver.h
     V3Width.h
     V3WidthCommit.h
@@ -216,28 +178,20 @@ set(HEADERS
 set(COMMON_SOURCES
     Verilator.cpp
     V3Active.cpp
-    V3ActiveTop.cpp
     V3Assert.cpp
     V3AssertNfa.cpp
     V3AssertPre.cpp
     V3Ast.cpp
     V3AstNodes.cpp
     V3Begin.cpp
-    V3Branch.cpp
     V3Broken.cpp
-    V3CCtors.cpp
-    V3CUse.cpp
     V3Case.cpp
-    V3Cast.cpp
     V3Cfg.cpp
     V3CfgBuilder.cpp
     V3CfgLiveVariables.cpp
     V3Class.cpp
     V3ClassGraph.cpp
     V3Clean.cpp
-    V3Clock.cpp
-    V3Combine.cpp
-    V3Common.cpp
     V3ConstPool.cpp
     V3Control.cpp
     V3Const__gen.cpp
@@ -246,9 +200,6 @@ set(COMMON_SOURCES
     V3Covergroup.cpp
     V3Dead.cpp
     V3Delayed.cpp
-    V3Depth.cpp
-    V3DepthBlock.cpp
-    V3Descope.cpp
     V3Dfg.cpp
     V3DfgAstToDfg.cpp
     V3DfgBreakCycles.cpp
@@ -266,27 +217,13 @@ set(COMMON_SOURCES
     V3DiagSarif.cpp
     V3DupFinder.cpp
     V3EmitCBase.cpp
-    V3EmitCConstPool.cpp
-    V3EmitCFunc.cpp
-    V3EmitCHeaders.cpp
-    V3EmitCImp.cpp
-    V3EmitCInlines.cpp
-    V3EmitCMain.cpp
-    V3EmitCModel.cpp
-    V3EmitCPch.cpp
-    V3EmitCSyms.cpp
-    V3EmitMk.cpp
-    V3EmitMkJson.cpp
     V3EmitV.cpp
     V3Error.cpp
-    V3ExecGraph.cpp
-    V3Expand.cpp
     V3File.cpp
     V3FileLine.cpp
     V3Force.cpp
     V3FsmDetect.cpp
     V3Fork.cpp
-    V3FuncOpt.cpp
     V3Gate.cpp
     V3Global.cpp
     V3Graph.cpp
@@ -297,15 +234,12 @@ set(COMMON_SOURCES
     V3Hash.cpp
     V3HashTable.cpp
     V3Hasher.cpp
-    V3HierBlock.cpp
     V3Inline.cpp
-    V3InlineCFuncs.cpp
     V3Inst.cpp
     V3InstrCount.cpp
     V3Interface.cpp
     V3LibMap.cpp
     V3Life.cpp
-    V3LifePost.cpp
     V3LiftExpr.cpp
     V3LinkCells.cpp
     V3LinkDot.cpp
@@ -317,21 +251,10 @@ set(COMMON_SOURCES
     V3LinkParse.cpp
     V3LinkResolve.cpp
     V3LinkWith.cpp
-    V3Localize.cpp
-    V3MergeCond.cpp
     V3Name.cpp
     V3Number.cpp
     V3OptionParser.cpp
     V3Options.cpp
-    V3Order.cpp
-    V3OrderGraphBuilder.cpp
-    V3OrderMoveGraph.cpp
-    V3OrderMTaskContraction.cpp
-    V3OrderMTaskFixHazards.cpp
-    V3OrderMTaskGraph.cpp
-    V3OrderParallel.cpp
-    V3OrderProcessDomains.cpp
-    V3OrderSerial.cpp
     V3Os.cpp
     V3Param.cpp
     V3ParseGrammar.cpp
@@ -341,21 +264,9 @@ set(COMMON_SOURCES
     V3PreProc.cpp
     V3PreShell.cpp
     V3Premit.cpp
-    V3ProtectLib.cpp
     V3RandSequence.cpp
     V3Randomize.cpp
-    V3Reloop.cpp
     V3Reorder.cpp
-    V3Sampled.cpp
-    V3Sched.cpp
-    V3SchedAcyclic.cpp
-    V3SchedCovergroup.cpp
-    V3SchedPartition.cpp
-    V3SchedReplicate.cpp
-    V3SchedTiming.cpp
-    V3SchedTrigger.cpp
-    V3SchedUtil.cpp
-    V3SchedVirtIface.cpp
     V3Scope.cpp
     V3Slice.cpp
     V3Split.cpp
@@ -364,13 +275,9 @@ set(COMMON_SOURCES
     V3Stats.cpp
     V3StatsReport.cpp
     V3String.cpp
-    V3Subst.cpp
-    V3Table.cpp
     V3Task.cpp
     V3ThreadPool.cpp
     V3Timing.cpp
-    V3Trace.cpp
-    V3TraceDecl.cpp
     V3Tristate.cpp
     V3Udp.cpp
     V3Undriven.cpp
@@ -378,7 +285,6 @@ set(COMMON_SOURCES
     V3Unknown.cpp
     V3Unroll.cpp
     V3UnrollGen.cpp
-    V3VariableOrder.cpp
     V3Waiver.cpp
     V3Width.cpp
     V3WidthCommit.cpp

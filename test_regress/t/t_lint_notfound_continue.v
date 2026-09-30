@@ -38,6 +38,14 @@ module t (
     absent_scope.field = 1'b1;
   end
 
+  // Write targets that no later pass hides: an undotted name, and an index that
+  // does not resolve, so each assignment has to go as a whole
+  logic [3:0] vec;
+  always_comb begin
+    missing_write = a;
+    vec[missing_index] = a;
+  end
+
 `ifdef T_LINT_NOTFOUND_CONTINUE_MIXED
   logic [3:0] o;
   assign o = {0{1'b0}};

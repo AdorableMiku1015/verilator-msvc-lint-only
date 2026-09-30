@@ -6611,7 +6611,11 @@ void V3LinkDot::linkDotScope(AstNetlist* nodep) {
 
 void V3LinkDot::markUnresolved(AstNode* nodep) {
     // A reference that is part of the write target has lost that target, so the
-    // whole assignment, not just the reference, is what has to go
+    // whole assignment, not just the reference, is what has to go.  The walk
+    // passes through any node to reach the assignment, because a write target can
+    // be a concatenation or an index expression and not only a select, member
+    // selection or dotted reference; the child pointer is what says whether the
+    // reference was under the left side.
     AstNode* targetp = nodep;
     AstNode* childp = nodep;
     for (AstNode* backp = nodep->backp(); backp; childp = backp, backp = backp->backp()) {

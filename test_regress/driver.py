@@ -3199,7 +3199,9 @@ if __name__ == '__main__':
             stats = os.stat(tdir)
             if stats.st_ino not in uniq:
                 uniq[stats.st_ino] = 1
-                Arg_Tests += sorted(glob.glob(tdir + "/t_*.py"))
+                # glob returns backslashes on Windows, and the derived test name
+                # has to keep the t/ prefix of a command line argument
+                Arg_Tests += sorted(f.replace('\\', '/') for f in glob.glob(tdir + "/t_*.py"))
     if Args.hashset:
         _calc_hashset()
 

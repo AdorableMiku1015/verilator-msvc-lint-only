@@ -1815,6 +1815,8 @@ List Of Warnings
    due to the generate/if condition being false.
 
    This error may be disabled with a lint_off PINNOTFOUND metacomment.
+   Linting continues after this error so that the later checks still
+   report, but the run still finishes with an error status.
 
 
 .. option:: PKGNODECL

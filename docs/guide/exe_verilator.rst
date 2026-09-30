@@ -23,6 +23,14 @@ The following arguments may be passed to the "verilator" executable.
    removed passes, such as ``-ftable``, no longer exist and are reported as
    invalid.
 
+   Linting normally stops at the first error, but errors that leave the design
+   analysable do not end it: a name that cannot be resolved, such as
+   :vlopt:`PINNOTFOUND` or a reference to a scope, variable, task or function
+   that does not exist, is reported and then replaced by a stand-in value, so
+   the later checks still report what they find. The run still exits with an
+   error status, and an error that leaves the design unusable still stops the
+   run where it happened.
+
 Summary:
 
    .. include:: ../_build/gen/args_verilator.rst

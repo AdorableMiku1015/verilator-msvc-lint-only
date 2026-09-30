@@ -4,15 +4,79 @@
 
 ---
 feature: test-suite-pruning
-status: in-progress
+status: delivered
 updated: 2026-09-30
 branch: msvc-lint-only
-commits:
+commits: 74f976237..90df41329
 ---
 
 # Complete the lint-only test-suite pruning
 
 ## Report
+
+**What was built** -- The default suite is clean: `nodist/test-regress.ps1`
+reports `Passed 1005 / Failed 0 / Skipped 48` instead of `Passed 986 /
+Failed 66 / Skipped 48`, and `--dist` keeps exactly its three pre-existing
+failures.
+
+Of the 66 failing tests, 18 now exercise the lint pipeline instead of building a
+model: each driver is `test.scenarios('vlt')` plus `test.lint(...)`, with
+`test.execute()` and model-only flags removed, so the language-extension,
+lint-cleanliness, preprocessor, slice-statistic, `-f`/`-Fs`, virtual-interface,
+package-export, generate-instantiation, `INSIDETRUE`-suppression, `--top-module`
+and NOTIMING-golden checks survive. `t_flag_hier0_bad` was already a lint test
+with a drifted golden: it now uses the surviving `t/t_EXAMPLE.v` as its top, its
+two options that no longer error were dropped, and its golden was regenerated.
+The other 47 tests -- 120 files -- were deleted with the fixtures only they
+owned: model build/simulation behaviour, waves and VPI/DPI, coverage data, the
+profiling tools, removed options (`--CFLAGS`, `-no-MMD`) and the passes this
+build stops before (`UNOPTFLAT`, the internal width error). Sources another test
+still uses are kept (`t_castdyn.v`, `t_delay.v`, `t_flag_main.v`, the
+`_bad`-sibling fixtures, ...). Five stale references were updated, and the spec
+records the accepted coverage losses.
+
+**Verification** -- run from the repository root:
+
+- `nodist/test-regress.ps1` -- Passed 1005 / Failed 0 / Skipped 48 (baseline
+  before the change: Passed 986 / Failed 66 / Skipped 48).
+- `nodist/test-regress.ps1 --dist` -- Passed 22 / Failed 3 / Skipped 3,
+  identical to the baseline; PRE-EXISTING failures are `t_dist_contributors`
+  (needs a human signature in `docs/CONTRIBUTORS`), `t_flag_version` (the branch
+  version stamp omits "Verilator") and `t_driver_timeout` (bash execution here).
+- Targeted runs of the 18 converted tests, the restored `t_flag_hier0_bad` and
+  `t_lint_width_bad` -- all pass.
+- Bidirectional orphan sweep and a basename scan of all 120 deleted files over
+  the surviving tracked tree -- zero orphans; the only mentions of deleted files
+  are in this document, which records their removal. The two orphaned goldens
+  and the `t_config_work.map`/`t_uvm_hello.v` files still unreferenced were
+  already unreferenced at the base commit.
+- Three independent review rounds; the final one confirmed every earlier finding
+  resolved, no remaining orphan, all four tasks met, and no new correctness
+  problem.
+
+**Journey log**:
+
+- The first sweep decided deletions from text mentions by *surviving* files.
+  Two review rounds showed that misses two couplings the scanner cannot see:
+  fixtures mentioned only by files deleted in the same change, and sources tied
+  to a driver by the harness's default `top_filename` derivation. The sweep now
+  runs in both directions.
+- `t/t_config_libmap/` was kept at first on a "proven by experiment" claim that
+  came from running `driver.py` without the `nodist/test-regress.ps1` wrapper and
+  reading a stale log. Re-running under the wrapper showed the directory is dead
+  weight, so it was deleted and the spec corrected; the same wrapper mistake is
+  the reason the earlier claim looked reproducible.
+- `--hierarchical-block`'s two backslash error paths are unreachable on this
+  platform because the harness rewrites `\` to `/` before running Verilator, so
+  the two `V3Options` error paths lose their only test; recorded as an accepted
+  loss rather than papered over with a platform-dependent golden.
+- Six of the tests the first pass deleted were convertible after all, and
+  restoring them also kept their fixtures used (notably `t_flag_f`'s
+  `-f`/`-Fs` command-file chain).
+- The delete-or-convert line was drawn by asking whether an assertion can still
+  fail: removing the load-bearing input (the define, the flag, the directory)
+  must break the test, which was checked for the conversions that would
+  otherwise have been vacuous.
 
 ## [S1] Problem
 
@@ -52,7 +116,8 @@ assertions but calls `test.lint(...)` instead of `test.compile(...)`, loses its
 existing goldens:
 
 - `t_EXAMPLE` (documented template; its `.v` is also a fixture for eleven other
-  tests), `t_gen_forif` (genvar for-if elaboration; referenced by comments in
+  tests, seven of which this build skips for missing coroutines or tools),
+  `t_gen_forif` (genvar for-if elaboration; referenced by comments in
   `src/V3LinkDot.cpp` and `t_lint_block_redecl_bad.v`), `t_lint_implicit`,
   `t_lint_noreturn`, `t_lint_paramnodefault`, `t_langext_1`, `t_langext_2`,
   `t_langext_3`, `t_opt_slice_element_limit` (its
@@ -77,7 +142,7 @@ dropped, and its golden was regenerated with `HARNESS_UPDATE_GOLDEN=1`. This
 keeps the branch's only coverage of `--hierarchical-block` argument validation.
 
 Deleted tests (47) and files (120). The driver, its golden and its `.v`/`.sv`/
-`.cpp`/`.pli`/`.mem`/`.dat`/`.vc` fixtures are removed, except where a surviving
+`.cpp`/`.h`/`.mem`/`.dat`/`.vc` fixtures are removed, except where a surviving
 tracked file mentions the basename. The sweep is run in both directions: a
 source is also orphaned when the only files that mentioned it were deleted by
 the same change, or when it was coupled to a driver by the default
@@ -95,12 +160,11 @@ That rule keeps these shared fixtures: `t_castdyn.v`,
 `t_sys_psprintf.v`.
 
 Deleting the `t/t_config_libmap/` directory does not disturb its last surviving
-mention: `t_config_libmap_inc.map` includes `lib.map`, but the config grammar
-rejects the `include` token without opening the file, so moving the whole
-directory out of the tree leaves `t_config_libmap_inc` passing byte-identically.
-An earlier attempt to justify keeping it ran the driver without the
-`nodist/test-regress.ps1` wrapper and misread a stale log; the decision here is
-the re-run under the wrapper.
+mention: `t_config_libmap_inc.map` still contains
+`include ./t_config_libmap/lib.map;`, but `include` is an unimplemented reserved
+config keyword, so the diagnostic comes from the lexer and the included file is
+never opened. With the directory absent, `t_config_libmap_inc` passes
+byte-identically.
 
 Stale references created by the pruning are updated in the same change:
 
@@ -144,18 +208,18 @@ pre-existing failures.
 
 ## Tasks
 
-- [ ] T1: Convert the 18 listed tests to `test.lint()` with model-only parts
+- [x] T1: Convert the 18 listed tests to `test.lint()` with model-only parts
       removed, and restore `t_flag_hier0_bad` with a regenerated golden --
       acceptance: each passes individually under `nodist/test-regress.ps1`
       (covers: S2)
-- [ ] T2: Delete the 47 tests and their exclusively-owned fixtures, using the
+- [x] T2: Delete the 47 tests and their exclusively-owned fixtures, using the
       bidirectional orphan sweep -- acceptance: `git ls-files` no longer lists
       them, and no surviving file references a deleted file or leaves a source
       orphaned (covers: S2; depends: T1)
-- [ ] T3: Update the five stale references (ps1 example, two dist exemptions,
+- [x] T3: Update the five stale references (ps1 example, two dist exemptions,
       two in-test cross-references) -- acceptance: none of them names a deleted
       file, and `t_dist_copyright`, `t_dist_whitespace` and
       `t_lint_width_bad` still pass (covers: S2; depends: T2)
-- [ ] T4: Run the full `--vlt` suite and the `--dist` suite -- acceptance:
+- [x] T4: Run the full `--vlt` suite and the `--dist` suite -- acceptance:
       `Failed 0` in the suite with the skip set unchanged, and `--dist` shows
       the same three pre-existing failures (covers: S2; depends: T2, T3)

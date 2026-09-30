@@ -13,8 +13,8 @@ test.scenarios('linter')
 
 test.lint(
     fails=True,
-    # Used to be %Error: t/t_order_wireloop.v:\d+: Wire inputs its own output, creating circular logic .wire x=x.
-    # However we no longer gate optimize this
+    # Used to be a "Wire inputs its own output, creating circular logic" error at
+    # a location that varied with the optimization pass, so no golden is used.
     expect_filename=test.golden_filename)
 
 test.passes()

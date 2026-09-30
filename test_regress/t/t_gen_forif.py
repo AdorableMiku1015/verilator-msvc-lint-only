@@ -11,6 +11,6 @@ import vltest_bootstrap
 
 test.scenarios('vlt')
 
-test.lint(nc_flags2=['+access+r'], verilator_flags2=["--no-timing"])
+test.lint(verilator_flags2=["--no-timing"])
 
 test.passes()

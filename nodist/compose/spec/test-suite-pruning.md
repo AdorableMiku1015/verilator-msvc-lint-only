@@ -44,7 +44,7 @@ A failing test is **converted** to a lint test when its purpose is
 verilation-side and the lint-only build still exercises it; otherwise it is
 **deleted** together with the fixtures only it owns.
 
-Converted tests (12). Each driver keeps its flags, goldens and `file_grep`
+Converted tests (18). Each driver keeps its flags, goldens and `file_grep`
 assertions but calls `test.lint(...)` instead of `test.compile(...)`, loses its
 `test.execute()` and model-only flags, and is normalized to
 `test.scenarios('vlt')`. Each was verified to lint cleanly (exit 0) except
@@ -59,19 +59,43 @@ existing goldens:
   `Optimizations, Slice array skips due to size limit` statistic is 4 under
   lint), `t_pp_dupdef`, `t_property_s_until_nfa` (keep the two lint runs, drop
   the three compile runs and the simulation run), `t_var_rsvd_port`.
+- `t_flag_f` (keeps `-f`/`-Fs` command-file parsing, including the missing-file
+  `-Fs` case, which otherwise loses its only test), `t_interface_virtual` (keeps
+  the positive half of the virtual-interface pair with
+  `t_interface_virtual_bad`), `t_package_export` (keeps the positive
+  `export` case of the package pair), `t_gen_missing` (keeps the
+  generate-instantiation half of the `MODMISSING` pair), and
+  `t_inside_unbounded_both` (keeps the `-Wno-INSIDETRUE` suppression check).
+- `t_mod_topmodule__underunder` (keeps the only check that `--top-module` may
+  name a module instantiated beneath another module).
 
-Deleted tests (54) and files (116). The driver, its golden and its `.v`/`.sv`/
+Restored and repaired (1): `t_flag_hier0_bad` was already a `test.lint()` test
+whose golden had drifted; its `top_filename` now points at the surviving
+`t/t_EXAMPLE.v`, its two option values that no longer produce an error were
+dropped, and its golden was regenerated with `HARNESS_UPDATE_GOLDEN=1`. This
+keeps the branch's only coverage of `--hierarchical-block` argument validation.
+
+Deleted tests (47) and files (111). The driver, its golden and its `.v`/`.sv`/
 `.cpp`/`.pli`/`.mem`/`.dat`/`.vc` fixtures are removed, except where a surviving
-tracked file mentions the basename; that rule keeps these shared fixtures:
-`t_castdyn.v`, `t_cover_fsm_policy_accept_multi.v`,
-`t_covergroup_clocked_sample.v`, `t_covergroup_with.v`, `t_delay.v`,
-`t_dpi_accessors.v`, `t_flag_decoration.v`, `t_flag_main.v`,
+tracked file mentions the basename. The sweep is run in both directions: a
+source is also orphaned when the only files that mentioned it were deleted by
+the same change, or when it was coupled to a driver by the default
+`top_filename` naming convention rather than by text.
+
+That rule keeps these shared fixtures: `t_castdyn.v`,
+`t_cover_fsm_policy_accept_multi.v`, `t_covergroup_clocked_sample.v`,
+`t_covergroup_with.v`, `t_delay.v`, `t_flag_decoration.v`, `t_flag_main.v`,
 `t_flag_parameter.v`, `t_flag_topmodule.v`, `t_foreach_noivar.v`,
 `t_func_wide_out.v`, `t_gate_basic.v`, `t_gen_missing.v`,
 `t_inside_unbounded_both.v`, `t_interface_virtual.v`, `t_multitop_sig.v`,
-`t_order_wireloop.v`, `t_package_export.v`, `t_param_concat.v`,
-`t_struct_init.v`, `t_sys_psprintf.v`, and the whole `t/t_config_libmap/`
-fixture directory, which the surviving `t_config_libmap_inc` test includes.
+`t_package_export.v`, `t_param_concat.v`, `t_struct_init.v`,
+`t_sys_psprintf.v`, and the whole `t/t_config_libmap/` fixture directory.
+
+The `t/t_config_libmap/` directory is kept whole on evidence, not by
+assumption: its surviving consumer `t_config_libmap_inc` reports a different
+first line (the golden miscompares) when either the directory or just its
+library modules are removed, so `lib.map` and the modules it maps are live
+fixtures for that test.
 
 Stale references created by the pruning are updated in the same change:
 
@@ -79,6 +103,11 @@ Stale references created by the pruning are updated in the same change:
 - `t_dist_copyright.py` exemption for the deleted `t/t_randsequence_svtests.v`.
 - `t_dist_whitespace.py` exemption for the deleted
   `t/t_sys_file_basic_uz.dat`.
+- `t_lint_width_bad.v` cross-reference to the deleted `t_math_width` points at
+  the surviving `t_lint_width_genfor_bad` instead, keeping the line count so its
+  golden stays valid.
+- `t_interface_typo_bad.py`'s historical comment no longer quotes a deleted
+  file's path.
 
 Contracts: no `.v` is left without a driver unless a surviving test uses it; no
 surviving test references a deleted file; `nodist/test-regress.ps1` finishes
@@ -96,18 +125,29 @@ pre-existing failures.
   changes, and no new driver flags.
 - Replacing the runtime coverage the deleted simulation tests provided; that
   coverage cannot exist in a build that never emits a model.
+- Accepted coverage losses, recorded rather than hidden: `t_debug_width`'s
+  `--debug-width` invocation (its golden pinned an internal width error that no
+  longer occurs, and the option itself is a debug aid), and the positive
+  NFA/simulation half of `t_property_s_until_nfa` (it needs `--timing` and
+  coroutines). The `-Fs` command-file case that `t_flag_f` used to cover at
+  runtime is kept by its conversion, and the three orphaned goldens this change
+  does not touch (`t_cover_line.out`, `t_sarif.sarif.out`,
+  `t_sarif_clean.sarif.out`) were already orphaned before it.
 
 ## Tasks
 
-- [ ] T1: Convert the 12 listed tests to `test.lint()` with model-only parts
-      removed -- acceptance: each passes individually under
-      `nodist/test-regress.ps1` (covers: S2)
-- [ ] T2: Delete the 54 tests and their exclusively-owned fixtures -- acceptance:
-      `git ls-files` no longer lists them and a word-boundary scan finds no
-      reference from a surviving tracked file (covers: S2; depends: T1)
-- [ ] T3: Update the three stale references (ps1 example, two dist exemptions)
-      -- acceptance: none of them names a deleted file, and `t_dist_copyright`
-      and `t_dist_whitespace` still pass (covers: S2; depends: T2)
+- [ ] T1: Convert the 18 listed tests to `test.lint()` with model-only parts
+      removed, and restore `t_flag_hier0_bad` with a regenerated golden --
+      acceptance: each passes individually under `nodist/test-regress.ps1`
+      (covers: S2)
+- [ ] T2: Delete the 47 tests and their exclusively-owned fixtures, using the
+      bidirectional orphan sweep -- acceptance: `git ls-files` no longer lists
+      them, and no surviving file references a deleted file or leaves a source
+      orphaned (covers: S2; depends: T1)
+- [ ] T3: Update the five stale references (ps1 example, two dist exemptions,
+      two in-test cross-references) -- acceptance: none of them names a deleted
+      file, and `t_dist_copyright`, `t_dist_whitespace` and
+      `t_lint_width_bad` still pass (covers: S2; depends: T2)
 - [ ] T4: Run the full `--vlt` suite and the `--dist` suite -- acceptance:
       `Failed 0` in the suite with the skip set unchanged, and `--dist` shows
       the same three pre-existing failures (covers: S2; depends: T2, T3)

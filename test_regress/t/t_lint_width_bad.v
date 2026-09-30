@@ -6,7 +6,7 @@
 
 module t;
 
-  // See also t_math_width
+  // See also t_lint_width_genfor_bad
 
   // This shows the uglyness in width warnings across param modules
   // TODO: Would be nice to also show relevant parameter settings

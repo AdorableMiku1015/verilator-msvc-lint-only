@@ -133,6 +133,9 @@ static void process() {
         // Cross-link signal names
         // Cross-link dotted hierarchical references
         V3LinkDot::linkDotPrimary(v3Global.rootp());
+        // Replace what the link pass could not resolve before the next passes
+        // read it, when this run is going to continue past those errors.
+        V3LinkDot::repairUnresolved(v3Global.rootp());
         v3Global.checkTree();  // Force a check, as link is most likely place for problems
         // Check if all parameters have been found
         v3Global.opt.checkParameters();
@@ -144,7 +147,10 @@ static void process() {
         V3LinkJump::linkJump(v3Global.rootp());
         // Convert --/++ to normal operations. Must be after LinkJump.
         V3LinkInc::linkIncrements(v3Global.rootp());
-        V3Error::abortIfErrors();
+        // Unresolved names leave a repairable tree, so keep linting past them;
+        // any other error still stops at the first tolerant gate.
+        V3LinkDot::repairUnresolved(v3Global.rootp());
+        V3Error::abortIfUnrecoverableErrors();
 
         if (doLintProfile) {
             lintStagePrint("link", stageWallTime.deltaTime());
@@ -166,7 +172,8 @@ static void process() {
         // (called only once, not when width a single params)
         V3LinkWith::linkWith(v3Global.rootp());
 
-        V3Error::abortIfErrors();
+        V3LinkDot::repairUnresolved(v3Global.rootp());
+        V3Error::abortIfUnrecoverableErrors();
 
         if (doLintProfile) {
             lintStagePrint("param", stageWallTime.deltaTime());
@@ -325,6 +332,7 @@ static void process() {
             // No more AstAlias after linkDotScope
             V3Scope::scopeAll(v3Global.rootp());
             V3LinkDot::linkDotScope(v3Global.rootp());
+            V3LinkDot::repairUnresolved(v3Global.rootp());
             V3Error::abortIfUnrecoverableErrors();
 
             // FSM coverage needs scopes, but should otherwise run as early as possible before

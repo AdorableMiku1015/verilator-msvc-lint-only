@@ -35,6 +35,13 @@ public:
     static void linkDotPrimary(AstNetlist* nodep) VL_MT_DISABLED;
     static void linkDotParamed(AstNetlist* nodep) VL_MT_DISABLED;
     static void linkDotScope(AstNetlist* nodep) VL_MT_DISABLED;
+    // Mark a name this pass could not resolve, so repairUnresolved() can remove
+    // the reference before the later passes read the tree
+    static void markUnresolved(AstNode* nodep) VL_MT_DISABLED;
+    // Replace or remove what markUnresolved() marked, and stop the run when a
+    // marked node cannot be placed, so the later passes never see a tree they
+    // cannot traverse
+    static void repairUnresolved(AstNetlist* nodep) VL_MT_DISABLED;
 };
 
 #endif  // Guard

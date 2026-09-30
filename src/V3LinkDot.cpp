@@ -4180,7 +4180,9 @@ class LinkDotResolveVisitor final : public VNVisitor {
                 if (start) {
                     AstNode* newp;
                     if (m_ds.m_dotErr) {
-                        newp = new AstConst{nodep->fileline(), AstConst::BitFalse{}};
+                        // Marked, so the later passes know this value is a stand-in
+                        // for a name that did not resolve
+                        newp = new AstConst{nodep->fileline(), AstConst::BitFalseErroring{}};
                     } else {
                         newp = nodep->rhsp()->unlinkFrBack();
                     }
@@ -4846,12 +4848,13 @@ class LinkDotResolveVisitor final : public VNVisitor {
                                                                  << " ds=" << m_ds.ascii());
                             const string suggest = m_statep->suggestSymFallback(
                                 m_ds.m_dotSymp, nodep->name(), VNodeMatcher{});
-                            nodep->v3error(
+                            nodep->v3errorRecoverable(
                                 "Can't find definition of "
                                 << expectWhat << ": " << nodep->prettyNameQ() << '\n'
                                 << (suggest.empty() ? "" : nodep->warnMore() + suggest));
+                            V3LinkDot::markUnresolved(nodep);
                         } else {
-                            nodep->v3error(
+                            nodep->v3errorRecoverable(
                                 "Can't find definition of "
                                 << (!baddot.empty() ? AstNode::prettyNameQ(baddot)
                                                     : nodep->prettyNameQ())
@@ -4861,6 +4864,7 @@ class LinkDotResolveVisitor final : public VNVisitor {
                                 << (okSymp ? okSymp->cellErrorScopes(
                                                  nodep, AstNode::prettyName(m_ds.m_dotText))
                                            : ""));
+                            V3LinkDot::markUnresolved(nodep);
                         }
                         m_ds.m_dotErr = true;
                     }
@@ -5093,11 +5097,14 @@ class LinkDotResolveVisitor final : public VNVisitor {
                 // If found, check if it's ok to access in case it's in a hier_block
                 if (nodep->varp() && errorHierNonPort(nodep, nodep->varp(), dotSymp)) return;
                 if (!nodep->varp()) {
-                    nodep->v3error("Can't find definition of "
-                                   << AstNode::prettyNameQ(baddot) << " in dotted signal: '"
-                                   << nodep->dotted() + "." + nodep->prettyName() << "'\n"
-                                   << nodep->warnContextPrimary()
-                                   << okSymp->cellErrorScopes(nodep));
+                    nodep->v3errorRecoverable("Can't find definition of "
+                                              << AstNode::prettyNameQ(baddot)
+                                              << " in dotted signal: '"
+                                              << nodep->dotted() + "." + nodep->prettyName()
+                                              << "'\n"
+                                              << nodep->warnContextPrimary()
+                                              << okSymp->cellErrorScopes(nodep));
+                    V3LinkDot::markUnresolved(nodep);
                     return;
                 }
             } else {
@@ -5109,11 +5116,14 @@ class LinkDotResolveVisitor final : public VNVisitor {
                 // If found, check if it's ok to access in case it's in a hier_block
                 if (vscp && errorHierNonPort(nodep, vscp->varp(), dotSymp)) return;
                 if (!vscp) {
-                    nodep->v3error("Can't find varpin scope of "
-                                   << AstNode::prettyNameQ(baddot) << " in dotted signal: '"
-                                   << nodep->dotted() + "." + nodep->prettyName() << "'\n"
-                                   << nodep->warnContextPrimary()
-                                   << okSymp->cellErrorScopes(nodep));
+                    nodep->v3errorRecoverable("Can't find varpin scope of "
+                                              << AstNode::prettyNameQ(baddot)
+                                              << " in dotted signal: '"
+                                              << nodep->dotted() + "." + nodep->prettyName()
+                                              << "'\n"
+                                              << nodep->warnContextPrimary()
+                                              << okSymp->cellErrorScopes(nodep));
+                    V3LinkDot::markUnresolved(nodep);
                 } else {
                     if (vscp->user2p() && m_replaceWithAlias) {
                         vscp = LinkDotScopeVisitor::getAliasVarScopep(vscp);
@@ -5518,19 +5528,25 @@ class LinkDotResolveVisitor final : public VNVisitor {
                     } else {
                         const string suggest = m_statep->suggestSymFallback(
                             dotSymp, nodep->name(), LinkNodeMatcherFTask{});
-                        nodep->v3error("Can't find definition of task/function: "
-                                       << nodep->prettyNameQ() << '\n'
-                                       << (suggest.empty() ? "" : nodep->warnMore() + suggest));
+                        nodep->v3errorRecoverable("Can't find definition of task/function: "
+                                                  << nodep->prettyNameQ() << '\n'
+                                                  << (suggest.empty() ? ""
+                                                                      : nodep->warnMore() + suggest));
+                        V3LinkDot::markUnresolved(nodep);
                     }
                 } else {
                     const string suggest = m_statep->suggestSymFallback(dotSymp, nodep->name(),
                                                                         LinkNodeMatcherFTask{});
-                    nodep->v3error("Can't find definition of "
-                                   << AstNode::prettyNameQ(baddot) << " in dotted task/function: '"
-                                   << nodep->dotted() + "." + nodep->prettyName() << "'\n"
-                                   << (suggest.empty() ? "" : nodep->warnMore() + suggest) << '\n'
-                                   << nodep->warnContextPrimary()
-                                   << okSymp->cellErrorScopes(nodep));
+                    nodep->v3errorRecoverable("Can't find definition of "
+                                              << AstNode::prettyNameQ(baddot)
+                                              << " in dotted task/function: '"
+                                              << nodep->dotted() + "." + nodep->prettyName() << "'\n"
+                                              << (suggest.empty() ? ""
+                                                                  : nodep->warnMore() + suggest)
+                                              << '\n'
+                                              << nodep->warnContextPrimary()
+                                              << okSymp->cellErrorScopes(nodep));
+                    V3LinkDot::markUnresolved(nodep);
                 }
             }
         }
@@ -6561,4 +6577,120 @@ void V3LinkDot::linkDotScope(AstNetlist* nodep) {
     UINFO(2, __FUNCTION__ << ":");
     linkDotGuts(nodep, LDS_SCOPED);
     V3Global::dumpCheckGlobalTree("linkdot", 0, dumpTreeEitherLevel() >= 3);
+}
+
+//######################################################################
+// Repair of the names the link could not resolve
+//
+// Reporting a name the linker cannot resolve leaves the reference in the tree,
+// where the later passes assert on it.  A site that reports such a name also
+// calls markUnresolved(), and repairUnresolved() replaces or removes every
+// marked node by role before the next pass reads the tree, so a lint run can
+// continue past those errors.  A marked node this step cannot place stops the
+// run where it would have stopped without the repair, rather than let the later
+// passes see a tree they cannot traverse.
+
+// True when a node is part of an expression that can itself be written: a
+// select or member selection, including an index or member name it resolves
+// through, and a dotted reference such as 'scope.item'
+static bool linkDotWritePath(const AstNode* backp) {
+    return VN_IS(backp, NodeSel) || VN_IS(backp, MemberSel) || VN_IS(backp, Dot);
+}
+
+void V3LinkDot::markUnresolved(AstNode* nodep) {
+    // A reference that is part of the write target has lost that target, so the
+    // whole assignment, not just the reference, is what has to go
+    AstNode* targetp = nodep;
+    AstNode* childp = nodep;
+    for (AstNode* backp = nodep->backp(); backp; childp = backp, backp = backp->backp()) {
+        if (AstNodeAssign* const assignp = VN_CAST(backp, NodeAssign)) {
+            if (assignp->lhsp() == childp) targetp = assignp;
+            break;
+        }
+        if (!linkDotWritePath(backp)) break;
+    }
+    // A copy of the fileline marked as erroring is the existing way to say a
+    // node exists only because of an earlier error
+    FileLine* const newflp = new FileLine{targetp->fileline()};
+    newflp->erroringOn(true);
+    targetp->fileline(newflp);
+}
+
+class LinkDotRepairVisitor final : public VNVisitor {
+    // MEMBERS
+    int m_unrepairable = 0;  // Marked nodes that cannot be replaced or removed
+
+    // METHODS
+    static bool isMarked(const AstNode* nodep) { return nodep->fileline()->erroringOn(); }
+    void replaceWithFalse(AstNode* nodep) {
+        AstNodeExpr* const newp = new AstConst{nodep->fileline(), AstConst::BitFalseErroring{}};
+        nodep->replaceWith(newp);
+        VL_DO_DANGLING(pushDeletep(nodep), nodep);
+    }
+
+    // VISITORS
+    void visit(AstNodeAssign* nodep) override {
+        if (!isMarked(nodep)) {
+            iterateChildren(nodep);
+            return;
+        }
+        // Its write target did not resolve, so there is nothing to assign to
+        VL_DO_DANGLING(pushDeletep(nodep->unlinkFrBack()), nodep);
+    }
+    void visit(AstParseRef* nodep) override {
+        if (!isMarked(nodep)) {
+            iterateChildren(nodep);
+            return;
+        }
+        replaceWithFalse(nodep);
+    }
+    void visit(AstNodeVarRef* nodep) override {
+        if (!isMarked(nodep)) {
+            iterateChildren(nodep);
+            return;
+        }
+        replaceWithFalse(nodep);
+    }
+    void visit(AstNodeFTaskRef* nodep) override {
+        if (!isMarked(nodep)) {
+            iterateChildren(nodep);
+            return;
+        }
+        // A call in statement position gives no value, so the statement it is
+        // the whole of is dropped; a call used as an expression needs a value
+        if (AstStmtExpr* const stmtp = VN_CAST(nodep->backp(), StmtExpr)) {
+            if (stmtp->exprp() == nodep) {
+                VL_DO_DANGLING(pushDeletep(stmtp->unlinkFrBack()), stmtp);
+                return;
+            }
+        } else if (VN_IS(nodep, TaskRef)) {
+            VL_DO_DANGLING(pushDeletep(nodep->unlinkFrBack()), nodep);
+            return;
+        }
+        replaceWithFalse(nodep);
+    }
+    // A placeholder this feature or an earlier repair created is already usable
+    void visit(AstConst* nodep) override { iterateChildren(nodep); }
+    void visit(AstNode* nodep) override {
+        if (isMarked(nodep)) ++m_unrepairable;
+        iterateChildren(nodep);
+    }
+
+public:
+    explicit LinkDotRepairVisitor(AstNetlist* nodep) { iterate(nodep); }
+    ~LinkDotRepairVisitor() override = default;
+    int unrepairable() const { return m_unrepairable; }
+};
+
+void V3LinkDot::repairUnresolved(AstNetlist* rootp) {
+    // Only a run that is going to continue needs a traversable tree; a run that
+    // stops must keep exactly the tree it would have reported without this
+    if (!V3Error::recoverableErrorCount() || V3Error::hasUnrecoverableErrors()) return;
+    UINFO(2, __FUNCTION__ << ":");
+    const LinkDotRepairVisitor visitor{rootp};
+    if (const int unrepairable = visitor.unrepairable()) {
+        UINFO(2, "  Marked nodes left unrepairable: " << unrepairable);
+        // Stop as this run stopped before the repair existed
+        V3Error::abortIfErrors();
+    }
 }

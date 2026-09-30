@@ -263,7 +263,9 @@ public:
     }
     // Errors that leave the tree well formed enough for the later passes, so
     // linting may continue past them; the exit status stays non-zero
-    bool recoverableError() const VL_MT_SAFE { return m_e == MODMISSING; }
+    bool recoverableError() const VL_MT_SAFE {
+        return m_e == MODMISSING || m_e == PINNOTFOUND;
+    }
     // Warning is fatal error, don't continue
     bool severityFatal() const VL_MT_SAFE {
         return m_e == V3ErrorCode::EC_FATAL || m_e == V3ErrorCode::EC_FATALMANY
@@ -423,6 +425,7 @@ class VErrorMessage final {
     string m_text;  // Warning message text
     FileLine* m_fileline;  // Primary warning fileline
     FileLines m_filelines;  // Additional referenced filelines
+    bool m_recoverable;  // This error leaves a tree the later passes tolerate
 public:
     // CONSTRUCTORS
     VErrorMessage() { clear(); }
@@ -433,10 +436,13 @@ public:
         m_text = "";
         m_fileline = nullptr;
         m_filelines.clear();
+        m_recoverable = false;
     }
     // ACCESSORS
     V3ErrorCode code() const { return m_code; }
     bool isClear() const { return m_code == V3ErrorCode::EC_MIN; }
+    bool recoverable() const { return m_recoverable; }
+    void recoverable(bool flag) { m_recoverable = flag; }
     string text() const { return m_text; }
     void text(const string& msg) { m_text = msg; }
     FileLine* fileline() const { return m_fileline; }
@@ -519,6 +525,8 @@ public:
     bool hasUnrecoverableErrors() const VL_REQUIRES(m_mutex) {
         return m_errCount > m_recoverableErrCount;
     }
+    // Errors the later passes tolerate, so a repair step may still be worthwhile
+    int recoverableErrCount() const VL_REQUIRES(m_mutex) { return m_recoverableErrCount; }
     bool isErrorOrWarn() const VL_REQUIRES(m_mutex) {
         return errorCount() || (warnFatal() && warnCount());
     }
@@ -644,6 +652,11 @@ public:
         const V3RecursiveLockGuard guard{s().m_mutex};
         return s().hasUnrecoverableErrors();
     }
+    // Errors counted so far that the later passes tolerate
+    static int recoverableErrorCount() VL_MT_SAFE_EXCLUDES(s().m_mutex) {
+        const V3RecursiveLockGuard guard{s().m_mutex};
+        return s().recoverableErrCount();
+    }
     static void abortIfWarnings();
     // Suppress next %Warn if user has it off
     static void suppressThisWarning() VL_MT_SAFE_EXCLUDES(s().m_mutex) {
@@ -687,6 +700,8 @@ public:
     // Internals for v3error()/v3fatal() macros only
     // Error end takes the string stream to output, be careful to seek() as needed
     static std::ostringstream& v3errorPrep(V3ErrorCode code) VL_ACQUIRE(s().m_mutex);
+    // As v3errorPrep, but the error leaves a tree the later passes tolerate
+    static std::ostringstream& v3errorPrepRecoverable(V3ErrorCode code) VL_ACQUIRE(s().m_mutex);
     static std::ostringstream& v3errorPrepFileLine(V3ErrorCode code, const char* file, int line)
         VL_ACQUIRE(s().m_mutex);
     static std::ostringstream& v3errorStr() VL_REQUIRES(s().m_mutex) { return s().v3errorStr(); }
@@ -721,6 +736,10 @@ void v3errorEndFatal(std::ostringstream& sstr)
 #define v3warn(code, msg) v3warnCode(V3ErrorCode::code, msg)
 #define v3info(msg) v3warnCode(V3ErrorCode::EC_INFO, msg)
 #define v3error(msg) v3warnCode(V3ErrorCode::EC_ERROR, msg)
+// An error the later passes can be made to tolerate, so lint may continue past
+// it; counts and exit status are the same as v3error()
+#define v3errorRecoverable(msg) \
+    v3errorEnd(v3errorBuildMessage(V3Error::v3errorPrepRecoverable(V3ErrorCode::EC_ERROR), msg))
 #define v3fatal(msg) v3warnCodeFatal(V3ErrorCode::EC_FATAL, msg)
 // Fatal exit; used instead of fatal() if message gets suppressed with --quiet-exit
 #define v3fatalMany(msg) v3warnCodeFatal(V3ErrorCode::EC_FATALMANY, msg)

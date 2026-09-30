@@ -38,4 +38,22 @@
                                                         : ... Location of instance's program declaration
    50 | program prgm1 # (
       |         ^~~~~
+%Warning-USERERROR: t/t_param_implicit_local_bad.v:54:28: A**2 + B**2 != C**2
+                                                        : ... note: In instance 't.i_prgm1'
+   54 |   if (A**2 + B**2 != C**2) $error("A**2 + B**2 != C**2");
+      |                            ^~~~~~
+                    ... For warning description see https://verilator.org/warn/USERERROR?v=latest
+                    ... Use "/* verilator lint_off USERERROR */" and lint_on around source to disable this message.
+%Warning-USERERROR: t/t_param_implicit_local_bad.v:30:28: A**2 + B**2 != C**2
+                                                        : ... note: In instance 't.i_mod1'
+   30 |   if (A**2 + B**2 != C**2) $error("A**2 + B**2 != C**2");
+      |                            ^~~~~~
+%Warning-USERERROR: t/t_param_implicit_local_bad.v:47:28: A**2 + B**2 != C**2
+                                                        : ... note: In instance 't.i_mod3'
+   47 |   if (A**2 + B**2 != C**2) $error("A**2 + B**2 != C**2");
+      |                            ^~~~~~
+%Warning-USERERROR: t/t_param_implicit_local_bad.v:40:28: A**2 + B**2 != C**2
+                                                        : ... note: In instance 't.i_mod3'
+   40 |   if (A**2 + B**2 != C**2) $error("A**2 + B**2 != C**2");
+      |                            ^~~~~~
 %Error: Exiting due to

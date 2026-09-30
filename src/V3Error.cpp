@@ -246,7 +246,9 @@ void V3ErrorGuarded::v3errorEndGuts(const std::ostringstream& sstr, const string
 
         if (anError) {
             incErrors();
-            if (m_message.code().recoverableError()) incRecoverableErrors();
+            if (m_message.code().recoverableError() || m_message.recoverable()) {
+                incRecoverableErrors();
+            }
         } else {
             incWarnings();
         }
@@ -371,6 +373,11 @@ std::ostringstream& V3Error::v3errorPrep(V3ErrorCode code) VL_ACQUIRE(s().m_mute
     V3Error::s().m_mutex.lock();
     s().v3errorPrep(code);
     return v3errorStr();
+}
+std::ostringstream& V3Error::v3errorPrepRecoverable(V3ErrorCode code) VL_ACQUIRE(s().m_mutex) {
+    std::ostringstream& os = v3errorPrep(code);
+    s().m_message.recoverable(true);
+    return os;
 }
 std::ostringstream& V3Error::v3errorPrepFileLine(V3ErrorCode code, const char* file, int line)
     VL_ACQUIRE(s().m_mutex) {

@@ -1,0 +1,37 @@
+%Warning-PINMISSING: t/t_lint_notfound_continue.v:24:7: Instance has missing pin: 'present'
+   24 |   sub sub_inst (.nonexistent(1'b0));
+      |       ^~~~~~~~
+                     t/t_lint_notfound_continue.v:48:17: ... Location of port declaration
+   48 |     input logic present
+      |                 ^~~~~~~
+                     ... For warning description see https://verilator.org/warn/PINMISSING?v=latest
+                     ... Use "/* verilator lint_off PINMISSING */" and lint_on around source to disable this message.
+%Error-PINNOTFOUND: t/t_lint_notfound_continue.v:24:18: Pin not found: 'nonexistent'
+   24 |   sub sub_inst (.nonexistent(1'b0));
+      |                  ^~~~~~~~~~~
+                                                      : ... Location of instance's module declaration
+   47 | module sub (
+      |        ^~~
+                    ... For error description see https://verilator.org/warn/PINNOTFOUND?v=latest
+%Error: t/t_lint_notfound_continue.v:28:9: Can't find definition of scope/variable: 'missing_scope'
+   28 |     if (missing_scope.value != 9) $stop;
+      |         ^~~~~~~~~~~~~
+        ... See the manual at https://verilator.org/verilator_doc.html?v=latest for more assistance.
+%Error: t/t_lint_notfound_continue.v:33:5: Can't find definition of task/function: 'missing_task'
+   33 |     missing_task;
+      |     ^~~~~~~~~~~~
+%Error: t/t_lint_notfound_continue.v:38:5: Can't find definition of scope/variable: 'absent_scope'
+   38 |     absent_scope.field = 1'b1;
+      |     ^~~~~~~~~~~~
+%Warning-CASEINCOMPLETE: t/t_lint_notfound_continue.v:19:5: Case values incompletely covered (example pattern 0x1)
+   19 |     case (a)
+      |     ^~~~
+                         ... For warning description see https://verilator.org/warn/CASEINCOMPLETE?v=latest
+                         ... Use "/* verilator lint_off CASEINCOMPLETE */" and lint_on around source to disable this message.
+%Warning-LATCH: t/t_lint_notfound_continue.v:18:3: Latch inferred for signal 'b' (not all control paths of combinational always assign a value)
+                                                 : ... Suggest use of always_latch for intentional latches
+   18 |   always_comb begin
+      |   ^~~~~~~~~~~
+                ... For warning description see https://verilator.org/warn/LATCH?v=latest
+                ... Use "/* verilator lint_off LATCH */" and lint_on around source to disable this message.
+%Error: Exiting due to

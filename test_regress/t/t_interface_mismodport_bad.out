@@ -3,4 +3,10 @@
       |          ^~~
         ... Known scopes under 'isub': <no instances found>
         ... See the manual at https://verilator.org/verilator_doc.html?v=latest for more assistance.
+%Warning-WIDTHEXPAND: t/t_interface_mismodport_bad.v:32:13: Operator ASSIGN expects 32 bits on the Assign RHS, but Assign RHS's VARREF 'i_value' generates 4 bits.
+                                                          : ... note: In instance 't.c1'
+   32 |     isub.ok = i_value;
+      |             ^
+                      ... For warning description see https://verilator.org/warn/WIDTHEXPAND?v=latest
+                      ... Use "/* verilator lint_off WIDTHEXPAND */" and lint_on around source to disable this message.
 %Error: Exiting due to

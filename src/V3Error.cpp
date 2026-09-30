@@ -246,9 +246,8 @@ void V3ErrorGuarded::v3errorEndGuts(const std::ostringstream& sstr, const string
 
         if (anError) {
             incErrors();
-            // The message's own recoverable flag was set when it was prepared, so
-            // it survives the early returns for suppressed and duplicate messages
-            // above and is only cleared by the next v3errorPrep()
+            // A suppressed or duplicate message left the flag this message was
+            // prepared with set but uncounted; the next v3errorPrep() clears it
             if (m_message.code().recoverableError() || m_message.recoverable()) {
                 incRecoverableErrors();
             }

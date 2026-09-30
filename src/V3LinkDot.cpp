@@ -5034,6 +5034,10 @@ class LinkDotResolveVisitor final : public VNVisitor {
             dotSymp = m_statep->findDotted(nodep->fileline(), dotSymp, nodep->dotted(), baddot,
                                            okSymp, true);  // Maybe nullptr
             if (!dotSymp) {
+                // Left fatal on purpose: the sites that mark a reference for repair
+                // report a prefix that does not resolve before this one is reached,
+                // so a tree repaired here has no proven shape; stopping keeps the
+                // behavior this pass had before repair existed
                 nodep->v3error(
                     "Can't find definition of "
                     << (!baddot.empty() ? AstNode::prettyNameQ(baddot) : nodep->prettyNameQ())
@@ -6622,6 +6626,16 @@ class LinkDotRepairVisitor final : public VNVisitor {
 
     // METHODS
     static bool isMarked(const AstNode* nodep) { return nodep->fileline()->erroringOn(); }
+    // True when the write target still holds the reference that did not resolve.
+    // A later pass can also build an assignment around a placeholder, and that
+    // assignment inherits the mark on its fileline while its target is fine.
+    static bool writeTargetUnresolved(AstNode* lhsp) {
+        bool unresolved = false;
+        lhsp->foreach([&unresolved](AstNode* nodep) {
+            if (nodep->fileline()->erroringOn()) unresolved = true;
+        });
+        return unresolved;
+    }
     void replaceWithFalse(AstNode* nodep) {
         AstNodeExpr* const newp = new AstConst{nodep->fileline(), AstConst::BitFalseErroring{}};
         nodep->replaceWith(newp);
@@ -6630,11 +6644,12 @@ class LinkDotRepairVisitor final : public VNVisitor {
 
     // VISITORS
     void visit(AstNodeAssign* nodep) override {
-        if (!isMarked(nodep)) {
+        if (!isMarked(nodep) || !writeTargetUnresolved(nodep->lhsp())) {
             iterateChildren(nodep);
             return;
         }
         // Its write target did not resolve, so there is nothing to assign to
+        UINFO(2, "  Removing assignment whose target did not resolve: " << nodep);
         VL_DO_DANGLING(pushDeletep(nodep->unlinkFrBack()), nodep);
     }
     void visit(AstParseRef* nodep) override {
@@ -6642,6 +6657,9 @@ class LinkDotRepairVisitor final : public VNVisitor {
             iterateChildren(nodep);
             return;
         }
+        // The reference that replaces a marked parse reference inherits its
+        // fileline, so this is a net rather than a path the link normally leaves
+        // behind; it keeps such a reference from making the repair fail closed
         replaceWithFalse(nodep);
     }
     void visit(AstNodeVarRef* nodep) override {
@@ -6672,7 +6690,13 @@ class LinkDotRepairVisitor final : public VNVisitor {
     // A placeholder this feature or an earlier repair created is already usable
     void visit(AstConst* nodep) override { iterateChildren(nodep); }
     void visit(AstNode* nodep) override {
-        if (isMarked(nodep)) ++m_unrepairable;
+        // A mark can also arrive on a statement or block a later pass built
+        // around a placeholder, because it inherited the placeholder's fileline;
+        // only a marked expression can still be a hole this step has to fill
+        if (isMarked(nodep) && VN_IS(nodep, NodeExpr)) {
+            ++m_unrepairable;
+            UINFO(2, "  Unrepairable marked node: " << nodep);
+        }
         iterateChildren(nodep);
     }
 
@@ -6682,12 +6706,12 @@ public:
     int unrepairable() const { return m_unrepairable; }
 };
 
-void V3LinkDot::repairUnresolved(AstNetlist* rootp) {
+void V3LinkDot::repairUnresolved(AstNetlist* nodep) {
     // Only a run that is going to continue needs a traversable tree; a run that
     // stops must keep exactly the tree it would have reported without this
     if (!V3Error::recoverableErrorCount() || V3Error::hasUnrecoverableErrors()) return;
     UINFO(2, __FUNCTION__ << ":");
-    const LinkDotRepairVisitor visitor{rootp};
+    const LinkDotRepairVisitor visitor{nodep};
     if (const int unrepairable = visitor.unrepairable()) {
         UINFO(2, "  Marked nodes left unrepairable: " << unrepairable);
         // Stop as this run stopped before the repair existed

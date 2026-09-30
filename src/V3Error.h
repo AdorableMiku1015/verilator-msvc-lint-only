@@ -262,7 +262,8 @@ public:
         return (m_e != EC_INFO && m_e < V3ErrorCode::EC_FIRST_WARN);
     }
     // Errors that leave the tree well formed enough for the later passes, so
-    // linting may continue past them; the exit status stays non-zero
+    // linting may continue past them (MODMISSING, PINNOTFOUND); the exit status
+    // stays non-zero
     bool recoverableError() const VL_MT_SAFE {
         return m_e == MODMISSING || m_e == PINNOTFOUND;
     }

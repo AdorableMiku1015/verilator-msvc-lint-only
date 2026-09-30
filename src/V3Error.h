@@ -261,6 +261,9 @@ public:
     bool hardError() const VL_MT_SAFE {
         return (m_e != EC_INFO && m_e < V3ErrorCode::EC_FIRST_WARN);
     }
+    // Errors that leave the tree well formed enough for the later passes, so
+    // linting may continue past them; the exit status stays non-zero
+    bool recoverableError() const VL_MT_SAFE { return m_e == MODMISSING; }
     // Warning is fatal error, don't continue
     bool severityFatal() const VL_MT_SAFE {
         return m_e == V3ErrorCode::EC_FATAL || m_e == V3ErrorCode::EC_FATALMANY
@@ -473,6 +476,8 @@ private:
     bool m_errorContexted VL_GUARDED_BY(m_mutex) = false;  // Error being formed got context
     int m_warnCount VL_GUARDED_BY(m_mutex) = 0;  // Warning count
     int m_errCount VL_GUARDED_BY(m_mutex) = 0;  // Error count
+    // Errors counted that the later passes tolerate; see recoverableError()
+    int m_recoverableErrCount VL_GUARDED_BY(m_mutex) = 0;
     // Pretend this warning is an error
     VErrorBitSet m_pretendError VL_GUARDED_BY(m_mutex);
     // Told user specifics about this warning
@@ -509,6 +514,11 @@ public:
     void incWarnings() VL_REQUIRES(m_mutex) { ++m_warnCount; }
     void incErrors() VL_REQUIRES(m_mutex) { ++m_errCount; }
     int errorCount() const VL_REQUIRES(m_mutex) { return m_errCount; }
+    void incRecoverableErrors() VL_REQUIRES(m_mutex) { ++m_recoverableErrCount; }
+    // Errors the later passes cannot tolerate, so the pipeline has to stop
+    bool hasUnrecoverableErrors() const VL_REQUIRES(m_mutex) {
+        return m_errCount > m_recoverableErrCount;
+    }
     bool isErrorOrWarn() const VL_REQUIRES(m_mutex) {
         return errorCount() || (warnFatal() && warnCount());
     }
@@ -625,6 +635,14 @@ public:
     }
     static void abortIfErrors() {
         if (errorCount()) abortIfWarnings();
+    }
+    // Abort unless every error counted so far is one the later passes tolerate
+    static void abortIfUnrecoverableErrors() {
+        if (hasUnrecoverableErrors()) abortIfWarnings();
+    }
+    static bool hasUnrecoverableErrors() VL_MT_SAFE_EXCLUDES(s().m_mutex) {
+        const V3RecursiveLockGuard guard{s().m_mutex};
+        return s().hasUnrecoverableErrors();
     }
     static void abortIfWarnings();
     // Suppress next %Warn if user has it off

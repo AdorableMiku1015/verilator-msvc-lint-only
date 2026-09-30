@@ -1,0 +1,27 @@
+%Error-MODMISSING: t/t_lint_modmissing_continue.v:21:3: Cannot find file containing module: 'missing_mod'
+   21 |   missing_mod u_missing ();
+      |   ^~~~~~~~~~~
+                   ... For error description see https://verilator.org/warn/MODMISSING?v=latest
+                   ... Looked in:
+                        t/missing_mod
+                        t/missing_mod.v
+                        t/missing_mod.sv
+                        missing_mod
+                        missing_mod.v
+                        missing_mod.sv
+                        obj_vlt/t_lint_modmissing_continue/missing_mod
+                        obj_vlt/t_lint_modmissing_continue/missing_mod.v
+                        obj_vlt/t_lint_modmissing_continue/missing_mod.sv
+                   ... With current working directory '...'
+%Error-ZEROREPL: t/t_lint_modmissing_continue.v:25:16: Replication value of 0 is only legal under a concatenation (IEEE 1800-2023 11.4.12.1)
+                                                     : ... note: In instance 't'
+   25 |   assign o = {0{1'b0}};
+      |                ^
+                 ... For error description see https://verilator.org/warn/ZEROREPL?v=latest
+%Warning-WIDTHEXPAND: t/t_lint_modmissing_continue.v:25:12: Operator ASSIGNW expects 4 bits on the Assign RHS, but Assign RHS's REPLICATE generates 1 bits.
+                                                          : ... note: In instance 't'
+   25 |   assign o = {0{1'b0}};
+      |            ^
+                      ... For warning description see https://verilator.org/warn/WIDTHEXPAND?v=latest
+                      ... Use "/* verilator lint_off WIDTHEXPAND */" and lint_on around source to disable this message.
+%Error: Exiting due to

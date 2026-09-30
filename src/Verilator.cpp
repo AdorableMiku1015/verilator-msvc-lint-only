@@ -186,7 +186,10 @@ static void process() {
         // Calculate and check widths, edit tree to TRUNC/EXTRACT any width mismatches
         V3Width::width(v3Global.rootp());
 
-        V3Error::abortIfErrors();
+        // An unresolved module leaves a usable placeholder behind, so keep
+        // linting past that error; any other error still stops here.  Missing
+        // modules are then reported with the rest at the end of verilate().
+        V3Error::abortIfUnrecoverableErrors();
 
         // Commit to the widths we've chosen; Make widthMin==width
         V3WidthCommit::widthCommit(v3Global.rootp());
@@ -304,7 +307,7 @@ static void process() {
         V3Dead::deadifyDTypes(v3Global.rootp());
         v3Global.checkTree();
 
-        V3Error::abortIfErrors();
+        V3Error::abortIfUnrecoverableErrors();
 
         // --FLATTENING---------------
 
@@ -322,7 +325,7 @@ static void process() {
             // No more AstAlias after linkDotScope
             V3Scope::scopeAll(v3Global.rootp());
             V3LinkDot::linkDotScope(v3Global.rootp());
-            V3Error::abortIfErrors();
+            V3Error::abortIfUnrecoverableErrors();
 
             // FSM coverage needs scopes, but should otherwise run as early as possible before
             // later lowering rewrites user-visible clocked case structure.

@@ -246,6 +246,7 @@ void V3ErrorGuarded::v3errorEndGuts(const std::ostringstream& sstr, const string
 
         if (anError) {
             incErrors();
+            if (m_message.code().recoverableError()) incRecoverableErrors();
         } else {
             incWarnings();
         }

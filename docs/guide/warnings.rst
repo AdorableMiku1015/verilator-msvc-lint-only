@@ -1426,6 +1426,8 @@ List Of Warnings
    Error that a module, typically referenced by a cell, was not found.
    This is typically fatal, but may be suppressed in some linting
    situations with missing libraries.
+   Linting continues after this error so that the later checks still
+   report, but the run still finishes with an error status.
 
    Ignoring this error will cause the cell definition to be discarded.
    Simulation results will likely be wrong, so typically used only with

@@ -7,7 +7,7 @@ feature: lint-continue-notfound
 status: delivered
 updated: 2026-09-30
 branch: msvc-lint-only
-commits: 820348384..e2fd4fa0d
+commits: 9258db075..c96a13b26
 ---
 
 # Unresolved names do not stop lint
@@ -21,15 +21,42 @@ code-less error as one the later passes tolerate, through a
 `VErrorMessage::recoverable()` flag that `v3errorEndGuts()` counts next to
 `incErrors()`. `V3LinkDot` uses it at the sites that report a reference it could
 not resolve and marks what it could not resolve with `V3LinkDot::markUnresolved()`.
-Before each tolerant gate, `V3LinkDot::repairUnresolved()` removes or replaces
-those marked nodes by role: an assignment whose write target still holds the
-unresolved reference is removed, a task call that is the whole of a statement is
-dropped, and a marked reference used as an expression becomes a marked false
-constant. A marked expression the repair cannot place stops the run where it
-would have stopped before, so a name error can never turn into
+`V3LinkDot::repairUnresolved()` removes or replaces those marked nodes by role: an
+assignment whose write target did not resolve is removed, a task call that is the
+whole of a statement is dropped, and a marked reference used as an expression
+becomes a marked false constant. A marked node the repair cannot place stops the
+run where it would have stopped before, so a name error can never turn into
 `%Error: Internal Error`. Message text, severities, suppression rules, error
 accounting and the exit status are unchanged, and a structural error (a parse
 error) or a named error (`E_UNSUPPORTED`, ...) still stops the run as before.
+
+The mark is one bit on the node itself (`AstNode`'s attribute word, next to
+`didWidth`, `doingWidth` and `protect`), not a copied `FileLine` carrying
+`erroringOn`. Because no pass can inherit the node flag from a fileline, the repair
+classifies instead of guessing: a marked assignment is removed, a marked reference
+is replaced or dropped, and any other marked node means the mark was placed
+wrongly and stops the run. The write-target scan, the `AstConst` exemption and the
+"only a marked expression is unrepairable" rule are gone with the guessing, and
+`markUnresolved()` now walks to the innermost enclosing assignment and asks
+whether the reference sits under its left side, instead of stopping at a node that
+is not a select, member selection or dot.
+
+Repairing belongs to the pass that marks: `repairUnresolved()` runs at the end of
+`linkDotPrimary()`, `linkDotParamed()` and `linkDotScope()`, the only three callers
+of the link guts, so a mark's lifetime is one link invocation and no other pass
+ever meets a marked node. The four pipeline-level calls in `Verilator.cpp` are
+gone; the tolerant gates stay where they are.
+
+Two consequences beyond the refactor. The corrected walk fixes shapes the old one
+got wrong: an assignment to a name that does not resolve, blocking or nonblocking,
+used to be kept and then stopped the run on a cascade `PROCASSWIRE` error, and a
+write target whose index does not resolve used to be kept and warned
+`WIDTHEXPAND` about the stand-in index; all of them now drop the assignment and
+continue to the later warnings. Both are covered in `t_lint_notfound_continue`.
+Also, deleting the `visit(AstParseRef*)` repair branch first came back green from
+the whole suite and still broke the `disable` statement, which leaves a parse
+reference in the tree because its target names a block; the branch is back, with
+the two `disable` targets covered in the same test.
 
 `test_regress/t/t_lint_notfound_continue` covers both directions: the default run
 proves that a missing scope/variable name, a missing task call, an assignment to
@@ -41,58 +68,90 @@ an unresolved target and a missing pin still let the later `CASEINCOMPLETE` and
 
 **Verification** -- commands run from the repository root:
 
-- `cmake --build --preset win64-release -j` (MSVC) -- PASS.
+- `cmd /c C:\Users\Miku\AppData\Local\Temp\build-verilator.bat` (MSVC, preset
+  `win64-release`) -- PASS.
 - `nodist/test-regress.ps1` (whole `--vlt` suite) -- PASSED 1006 / Failed 0 /
-  Skipped 48.
+  Skipped 48, the same counts as the delivered head; the only goldens that changed
+  are the two of `t_lint_notfound_continue`, which this amendment extends.
 - `nodist/test-regress.ps1 --dist` -- Passed 22 / Failed 3 / Skipped 3, the three
   PRE-EXISTING: `t_dist_contributors` (a human must edit `docs/CONTRIBUTORS`),
   `t_driver_timeout` (bash unavailable), `t_flag_version` (this branch's version
   stamp omits the word "Verilator").
+- Delivered binary against the built one over 45 probe files, each run with
+  `--error-limit 0` and with the default limit (90 runs): 82 byte-identical, and
+  the 8 differences are 4 probes where the new code continues further -- a
+  blocking or nonblocking assignment to an undeclared name now reaches the later
+  `CASEINCOMPLETE`/`LATCH` warnings instead of stopping on a cascade
+  `PROCASSWIRE` error, and a write target with an unresolved index, plain or
+  nested, now drops the assignment instead of leaving it and warning
+  `WIDTHEXPAND` about the 1-bit stand-in index. The two `disable` probes are
+  identical again once the parse-reference branch is restored.
 - Scan of every fresh `test_regress/obj_vlt/*/vlt_compile.log` for an
   `Internal Error`/`internal fault` line that the test's own golden does not
-  contain -- only `t_debug_sigsegv_bad`, the intentional crash test.
-- Only three existing goldens changed, each verified additive (no line lost, by
-  set-diff of message heads): `t_param_implicit_local_bad.out` (+4 `USERERROR`
-  from elaboration-time `$error` checks now reached),
+  contain, with the compiler paths normalized for the comparison -- 0 unexpected.
+  The 10 tests that contain one expect it in their golden, including the
+  intentional `t_debug_sigsegv_bad`.
+- The fail-closed path was observed rather than argued: while the parse-reference
+  branch was deleted, the `disable` probe stopped with
+  `%Error: Exiting due to N error(s)` and no internal error, which is exactly the
+  stop the delivered code produced for an unrepairable tree.
+- `git diff --check` -- clean, and every changed file is ASCII-only.
+  `nodist/verilog_format` could not run (it is a shell script needing bash and
+  verible, the same missing bash that fails `t_driver_timeout`) -- PRE-EXISTING
+  environment gap.
+- Only three other goldens changed in the delivered round, each verified additive
+  (no line lost, by set-diff of message heads): `t_param_implicit_local_bad.out`
+  (+4 `USERERROR` from elaboration-time `$error` checks now reached),
   `t_interface_mismodport_bad.out` (+1 `WIDTHEXPAND` on a sibling statement) and
   `t_vlt_match_error_2.out` (+1 `UNSUPPORTED` for `$readmemh`, which the earlier
   stop hid).
-- Spot checks by direct invocation: unresolved names used in an expression, a
-  port connection, a sensitivity list, a system-task argument, a generate-if
-  condition and a hierarchical write all report and continue; blocks emptied by
-  the repair still elaborate; 60 unresolved names end cleanly at
-  `--error-limit=50`; a syntax error and an `E_UNSUPPORTED` error still stop the
-  run.
-- Independent review by a fresh subagent over `820348384..6d4279fb9` found no
-  correctness bug; its five findings (one unverified criterion, one unverified
-  branch, and three comment/naming nits) are all addressed in `5b84dc3f5`, and a
-  separate re-review of that delta found no new correctness problem and only the
-  two documentation-polish items fixed here, one of which is a comment rewording
-  in `src/V3Error.cpp` with no behavior change.
+- The mark is visible where it matters for debugging: `--dumpi-tree 7` on a probe
+  with an unresolved name produces a `linkdot` tree whose reference carries
+  `[UNRESOLVED]`, which is a dump taken before the repair runs.
+- Independent review by a fresh subagent over `9258db075..5caa8bc49` found no
+  correctness bug: every T7/T8/T10/T11 criterion met, no shape where the exact
+  classification stops a run the delivered code continued, no unmarked hole (the
+  only `replaceWith` reachable after a mark is the implicit net, which copies it),
+  the walk cannot mark an assignment for a reference outside its write target, and
+  the style matches the neighbouring flags. Two notes came out of it, and both are
+  settled: the mark is now printed by `AstNode::dump()` (the pass dumps its tree
+  before the repair runs), and the fail-closed guard stays unreachable-by-
+  construction, which `src/AGENTS.md` allows when the code justifies it. A bounded
+  delta re-review of `5caa8bc49..c96a13b26` confirmed both, found nothing to fix,
+  and agreed that a `dumpJson` entry would be the inconsistent choice for
+  pass-internal scratch state. Two earlier review attempts stalled without
+  producing a report and were stopped; the reports above come from the two that
+  finished.
 
 **Journey log**:
 
-- Blanket continuation was measured before it was rejected: classifying every
-  code-less error recoverable changed 123 of 1005 tests, added
-  `%Error: Internal Error` in 67 and hung `t_class_extends_rec_bad`. The scope
-  decision comes from that measurement, not from taste.
-- The narrow family was not automatically safe either: 10 of the 43 affected
-  tests still gained internal errors, because the link pass left the unresolved
-  node in the tree. The answer was a repair step with a fail-closed rule, not a
-  wider recoverable set.
-- The marker lives on a `FileLine`, so a pass that builds a statement around a
-  placeholder inherits it: `V3Inst` gave the connection assignment and its
-  wrapping `AstAlways` the placeholder's fileline, so the repair deleted a
-  usable assignment and then stopped the run on the `AstAlways`. An unresolved
-  name in a port connection is exactly the legacy shape this feature exists for;
-  checking the write target itself, and treating a mark on a statement as
-  inherited, fixed it.
-- The harness creates a missing golden by copying the raw log, so a brand-new
-  golden needs one more `HARNESS_UPDATE_GOLDEN` pass to be normalized
-  (`?v=latest`); without it the test fails with a `Line 6 miscompares` that looks
-  like a code bug.
-- `t_dist_untracked` fails until the new test files are committed, so the
-  `--dist` suite has to be re-run after committing, not before.
+- Blanket continuation was measured before it was rejected, and so was the narrow
+  family: classifying every code-less error recoverable changed 123 of 1005 tests,
+  added `%Error: Internal Error` in 67 and hung `t_class_extends_rec_bad`, while
+  the missing-name family plus `PINNOTFOUND` alone still gained internal errors in
+  10 of the 43 affected tests, because the link left the unresolved node in the
+  tree. The answer was a repair step with a fail-closed rule, not a wider
+  recoverable set.
+- The fileline mark was load-bearing in a way the code did not say: a pass that
+  builds a statement around a placeholder inherits it, so `V3Inst` gave a port
+  connection's assignment and its wrapping `AstAlways` the placeholder's fileline
+  and the repair deleted a usable assignment. The node flag removes that class of
+  false positive, but it also removes inheritance, so a reference that stands in
+  for an unresolved name has to copy the flag explicitly -- without it the
+  `generate if (missing_var)` shape stopped on a cascade const-evaluation error
+  that the delivered code hid.
+- The suite is not the arbiter of reachability. Deleting the parse-reference
+  repair branch left all 1006 tests green, yet the branch was needed: the target
+  of a `disable` names a block, so the link reports it with implicit net creation
+  off and leaves the parse reference in the tree for the repair. A 45-file probe
+  set found it; the test now covers it.
+- Marking a hole is not enough: the write-target walk must reach the assignment
+  through any node. Stopping at a node that is not a select, member selection or
+  dot meant `x = a;` on an undeclared name kept the assignment, got an implicit
+  net, and stopped the run on a cascade `PROCASSWIRE` error instead of continuing.
+- The harness creates a missing golden by copying the raw log, so a golden needs a
+  second `HARNESS_UPDATE_GOLDEN` pass to be normalized (`?v=latest`); without it
+  the test fails with a `Line N miscompares` that looks like a code bug.
 
 ## [S1] Problem
 
@@ -226,6 +285,75 @@ error and proves those later checks are skipped again. The whole `--vlt` suite
 proves no test gains an internal error, a hang or a changed golden other than the
 ones whose run now legitimately reports more.
 
+## [S4] The mark belongs to the node, and the pass that marks repairs
+
+Amendment: the delivered design works, but its marker and its ownership are
+imprecise in ways that were papered over with positional guesses. This section
+replaces the marker and moves the repair. One user-visible behavior change comes
+with it, the write-target walk below, and T10 covers it.
+
+Contracts:
+
+- **The mark is a node flag, not a fileline flag.** One bit in `AstNode`'s
+  existing attribute word (the reserved bits of `m_flags`, next to `didWidth`,
+  `doingWidth` and `protect`) carries it, with `unresolved()`/`unresolved(bool)`
+  accessors; the implicit copy constructor already copies the word, so a clone
+  keeps the mark. The attribute word needs no `dumpJson` entry, following the
+  existing flags; `AstNode::dump()` prints the mark as `[UNRESOLVED]` beside the
+  existing `[ERRORING]`, because the pass dumps its tree before the repair runs
+  and a marked node would otherwise look ordinary in that dump. `markUnresolved()`
+  sets the flag on the node it picked -- the enclosing assignment when the
+  reference is part of a write target, the reference otherwise -- and no longer
+  copies a `FileLine`. The `erroringOn` copy survives only where it does a
+  different job: on the `BitFalseErroring` placeholder that replaces a reference,
+  where it is what suppresses the cascade complaints of the later passes.
+- **Why.** `erroringOn` is a warning-suppression flag with fourteen other
+  producers (`AstConst::BitFalseErroring`) and two consumers, and any pass that
+  builds a statement around a placeholder copies the placeholder's `FileLine`, so
+  a mark arrives on nodes that are not holes. The repair then had to guess by
+  position whether a marked node was a hole (`writeTargetUnresolved()`, the
+  `AstConst` exemption, "only a marked expression is unrepairable"), and that
+  guess failed closed on a usable assignment built around a placeholder for a
+  port connection -- the shape this feature exists for. The node flag is set only
+  by the mark sites, or copied onto a node that stands in for one of them, so the
+  repair classifies instead of guessing: a marked assignment is removed, a marked
+  reference is replaced or dropped by role, and any other marked node is a
+  violated contract that stops the run. (A clone copies the flag, which is what
+  makes a cloned hole repairable too.)
+- **Mark lifetime is one link invocation.** A mark is set only by the
+  name-resolution sites inside `linkDotGuts()`, which is called only by
+  `linkDotPrimary()`, `linkDotParamed()` and `linkDotScope()`. The repair runs at
+  the end of those three functions, so no other pass ever sees a marked node and
+  the gap in which a marked node could be transformed is gone. The four
+  pipeline-level calls in `Verilator.cpp` are removed; the tolerant gates remain
+  where they are, because which errors stop a run is pipeline policy, not a link
+  concern.
+- **The write-target walk reaches the assignment through any node.** Deciding
+  whether a reference is part of a write target no longer stops at a node that is
+  not a select, member selection or dot: it walks to the innermost enclosing
+  assignment and asks whether the reference sits under its left side. That is what
+  the delivered walk got wrong in the shapes a comparison over 45 probe files
+  found: an assignment to a name that does not resolve, blocking or nonblocking,
+  used to keep the assignment, after which the implicitly created net made the run
+  stop on a cascade `PROCASSWIRE` error instead of continuing; a write target
+  whose index does not resolve, `vec[i] = a;`, used to keep the assignment and
+  report a spurious `WIDTHEXPAND` about the stand-in index. All of them now drop
+  the assignment and continue, which is the one user-visible change of this
+  amendment.
+- **A reference that stands in for an unresolved name keeps the mark.** When the
+  link replaces the reported reference with an implicitly created net
+  (`checkImplicit`), the replacement is the same unresolved name in another
+  shape, so it carries the mark; otherwise the repair would never see the hole
+  and the run would stop later on a cascade error that the stand-in used to hide.
+- **The `AstParseRef` branch is reachable, and stays.** Deleting it left the
+  `--vlt` suite green, which turned out to be a false negative: the shape is the
+  target of a `disable`, which names a block, so implicit net creation is off and
+  the link reports the reference without replacing it. A marked parse reference
+  that reaches the repair is then a real hole, and without the branch the repair
+  stops the run on it where the delivered code continued to the later warnings.
+  The branch is restored, and T11 covers the shape in the regression test so the
+  suite cannot go green without it again.
+
 ## [S3] Out of Scope
 
 - Continuing past named errors, in particular `E_UNSUPPORTED` ("Unsupported:"
@@ -278,3 +406,37 @@ ones whose run now legitimately reports more.
       note) and `docs/guide/warnings.rst` (`PINNOTFOUND`, `MODMISSING`) --
       acceptance: ASCII-only, rewrapped prose, `t_dist_docs_warnings` passes
       (covers: S2; depends: T3)
+- [x] T7: Replace the `FileLine` `erroringOn` mark with the node-level
+      `unresolved` flag in `src/V3Ast.{h,cpp}` and use it in
+      `V3LinkDot::markUnresolved()`/`repairUnresolved()`, removing the positional
+      guesses the old mark forced (`writeTargetUnresolved()`'s inherited-mark
+      clause, the `AstConst` exemption, "only a marked expression is
+      unrepairable") -- acceptance: the MSVC build succeeds, the whole `--vlt`
+      suite passes with no golden regenerated and no new `Internal Error`, and the
+      only probe shapes whose output differs from the pre-change binary are the
+      write-target shapes T10 covers (covers: S4)
+- [x] T8: Call `repairUnresolved()` at the end of `linkDotPrimary()`,
+      `linkDotParamed()` and `linkDotScope()`, and delete the four pipeline-level
+      calls in `src/Verilator.cpp` -- acceptance: a lint run whose only errors are
+      unresolved names still reports the later `CASEINCOMPLETE`/`LATCH` warnings
+      and exits 1, `t_lint_notfound_continue` passes unchanged, and the whole
+      `--vlt` suite passes with no golden regenerated (covers: S4; depends: T7)
+- [x] T9: Delete the `visit(AstParseRef*)` repair branch and let the suite settle
+      whether it was reachable -- outcome: the suite stayed green, but a probe of
+      the `disable` shape showed the branch was reachable after all, so this is
+      T9's red case and T11 restores it with the test that covers it (covers: S4;
+      depends: T7)
+- [x] T10: Extend `t_lint_notfound_continue` with the two write-target shapes the
+      corrected walk changes (an undotted name and an unresolved index) and
+      regenerate its two goldens with `HARNESS_UPDATE_GOLDEN=1` -- acceptance: the
+      default golden shows the two errors and still the later
+      `CASEINCOMPLETE`/`LATCH` warnings with no `PROCASSWIRE` or placeholder
+      `WIDTHEXPAND`, the mixed golden shows the two errors and still no later
+      warnings, and the whole `--vlt` suite passes (covers: S4; depends: T7)
+- [x] T11: Restore the `visit(AstParseRef*)` repair branch and extend
+      `t_lint_notfound_continue` with the two `disable` targets (undotted and
+      dotted) that leave a parse reference for the repair -- acceptance: both
+      targets report `Can't find definition of block/task` and the default run
+      still reaches the later `CASEINCOMPLETE`/`LATCH` warnings while the mixed
+      run still stops, the goldens are regenerated with `HARNESS_UPDATE_GOLDEN=1`,
+      and the whole `--vlt` suite passes (covers: S4; depends: T9)

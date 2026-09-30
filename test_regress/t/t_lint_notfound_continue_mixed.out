@@ -1,8 +1,8 @@
 %Warning-PINMISSING: t/t_lint_notfound_continue.v:24:7: Instance has missing pin: 'present'
    24 |   sub sub_inst (.nonexistent(1'b0));
       |       ^~~~~~~~
-                     t/t_lint_notfound_continue.v:56:17: ... Location of port declaration
-   56 |     input logic present
+                     t/t_lint_notfound_continue.v:63:17: ... Location of port declaration
+   63 |     input logic present
       |                 ^~~~~~~
                      ... For warning description see https://verilator.org/warn/PINMISSING?v=latest
                      ... Use "/* verilator lint_off PINMISSING */" and lint_on around source to disable this message.
@@ -10,7 +10,7 @@
    24 |   sub sub_inst (.nonexistent(1'b0));
       |                  ^~~~~~~~~~~
                                                       : ... Location of instance's module declaration
-   55 | module sub (
+   62 | module sub (
       |        ^~~
                     ... For error description see https://verilator.org/warn/PINNOTFOUND?v=latest
 %Error: t/t_lint_notfound_continue.v:28:9: Can't find definition of scope/variable: 'missing_scope'
@@ -29,14 +29,24 @@
 %Error: t/t_lint_notfound_continue.v:46:9: Can't find definition of variable: 'missing_index'
    46 |     vec[missing_index] = a;
       |         ^~~~~~~~~~~~~
-%Error-ZEROREPL: t/t_lint_notfound_continue.v:51:16: Replication value of 0 is only legal under a concatenation (IEEE 1800-2023 11.4.12.1)
+%Error: t/t_lint_notfound_continue.v:52:13: Can't find definition of block/task: 'missing_block'
+   52 |     disable missing_block;
+      |             ^~~~~~~~~~~~~
+%Error: t/t_lint_notfound_continue.v:53:13: Can't find definition of block/task: 'missing_scope'
+                                          : ... Suggested alternative: 'missing_write'
+   53 |     disable missing_scope.blk;
+      |             ^~~~~~~~~~~~~
+%Error: t/t_lint_notfound_continue.v:53:27: Can't find definition of block/task: 'blk'
+   53 |     disable missing_scope.blk;
+      |                           ^~~
+%Error-ZEROREPL: t/t_lint_notfound_continue.v:58:16: Replication value of 0 is only legal under a concatenation (IEEE 1800-2023 11.4.12.1)
                                                    : ... note: In instance 't'
-   51 |   assign o = {0{1'b0}};
+   58 |   assign o = {0{1'b0}};
       |                ^
                  ... For error description see https://verilator.org/warn/ZEROREPL?v=latest
-%Warning-WIDTHEXPAND: t/t_lint_notfound_continue.v:51:12: Operator ASSIGNW expects 4 bits on the Assign RHS, but Assign RHS's REPLICATE generates 1 bits.
+%Warning-WIDTHEXPAND: t/t_lint_notfound_continue.v:58:12: Operator ASSIGNW expects 4 bits on the Assign RHS, but Assign RHS's REPLICATE generates 1 bits.
                                                         : ... note: In instance 't'
-   51 |   assign o = {0{1'b0}};
+   58 |   assign o = {0{1'b0}};
       |            ^
                       ... For warning description see https://verilator.org/warn/WIDTHEXPAND?v=latest
                       ... Use "/* verilator lint_off WIDTHEXPAND */" and lint_on around source to disable this message.

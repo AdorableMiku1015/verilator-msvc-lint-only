@@ -46,6 +46,13 @@ module t (
     vec[missing_index] = a;
   end
 
+  // Targets the link cannot replace with a stand-in, because a disable names a
+  // block: both references stay parse references until the repair replaces them
+  initial begin : blk
+    disable missing_block;
+    disable missing_scope.blk;
+  end
+
 `ifdef T_LINT_NOTFOUND_CONTINUE_MIXED
   logic [3:0] o;
   assign o = {0{1'b0}};

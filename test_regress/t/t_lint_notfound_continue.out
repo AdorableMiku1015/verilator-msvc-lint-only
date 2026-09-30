@@ -1,8 +1,8 @@
 %Warning-PINMISSING: t/t_lint_notfound_continue.v:24:7: Instance has missing pin: 'present'
    24 |   sub sub_inst (.nonexistent(1'b0));
       |       ^~~~~~~~
-                     t/t_lint_notfound_continue.v:56:17: ... Location of port declaration
-   56 |     input logic present
+                     t/t_lint_notfound_continue.v:63:17: ... Location of port declaration
+   63 |     input logic present
       |                 ^~~~~~~
                      ... For warning description see https://verilator.org/warn/PINMISSING?v=latest
                      ... Use "/* verilator lint_off PINMISSING */" and lint_on around source to disable this message.
@@ -10,7 +10,7 @@
    24 |   sub sub_inst (.nonexistent(1'b0));
       |                  ^~~~~~~~~~~
                                                       : ... Location of instance's module declaration
-   55 | module sub (
+   62 | module sub (
       |        ^~~
                     ... For error description see https://verilator.org/warn/PINNOTFOUND?v=latest
 %Error: t/t_lint_notfound_continue.v:28:9: Can't find definition of scope/variable: 'missing_scope'
@@ -29,6 +29,16 @@
 %Error: t/t_lint_notfound_continue.v:46:9: Can't find definition of variable: 'missing_index'
    46 |     vec[missing_index] = a;
       |         ^~~~~~~~~~~~~
+%Error: t/t_lint_notfound_continue.v:52:13: Can't find definition of block/task: 'missing_block'
+   52 |     disable missing_block;
+      |             ^~~~~~~~~~~~~
+%Error: t/t_lint_notfound_continue.v:53:13: Can't find definition of block/task: 'missing_scope'
+                                          : ... Suggested alternative: 'missing_write'
+   53 |     disable missing_scope.blk;
+      |             ^~~~~~~~~~~~~
+%Error: t/t_lint_notfound_continue.v:53:27: Can't find definition of block/task: 'blk'
+   53 |     disable missing_scope.blk;
+      |                           ^~~
 %Warning-CASEINCOMPLETE: t/t_lint_notfound_continue.v:19:5: Case values incompletely covered (example pattern 0x1)
    19 |     case (a)
       |     ^~~~

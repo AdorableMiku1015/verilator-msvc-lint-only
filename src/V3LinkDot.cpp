@@ -6644,6 +6644,17 @@ class LinkDotRepairVisitor final : public VNVisitor {
         UINFO(2, "  Removing assignment whose target did not resolve: " << nodep);
         VL_DO_DANGLING(pushDeletep(nodep->unlinkFrBack()), nodep);
     }
+    void visit(AstParseRef* nodep) override {
+        if (!isMarked(nodep)) {
+            iterateChildren(nodep);
+            return;
+        }
+        // A parse reference the link could not replace is still a hole.  That
+        // happens for the target of a disable, which names a block: the link
+        // reports it and turns implicit net creation off, so nothing stands in
+        // for it before this step runs
+        replaceWithFalse(nodep);
+    }
     void visit(AstNodeVarRef* nodep) override {
         if (!isMarked(nodep)) {
             iterateChildren(nodep);

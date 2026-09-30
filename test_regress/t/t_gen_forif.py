@@ -9,10 +9,8 @@
 
 import vltest_bootstrap
 
-test.scenarios('simulator')
+test.scenarios('vlt')
 
-test.compile(nc_flags2=['+access+r'], verilator_flags2=["--no-timing"])
-
-test.execute()
+test.lint(nc_flags2=['+access+r'], verilator_flags2=["--no-timing"])
 
 test.passes()

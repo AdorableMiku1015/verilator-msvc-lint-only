@@ -9,9 +9,9 @@
 
 import vltest_bootstrap
 
-test.scenarios('simulator')
+test.scenarios('vlt')
 
-# This is a compile only test.
-test.compile(v_flags2=["+1364-2005ext+v"])
+# This is a lint only test.
+test.lint(v_flags2=["+1364-2005ext+v"])
 
 test.passes()

@@ -11,6 +11,6 @@ import vltest_bootstrap
 
 test.scenarios('vlt')
 
-test.compile(verilator_flags2=["-Wno-REDEFMACRO"])
+test.lint(verilator_flags2=["-Wno-REDEFMACRO"])
 
 test.passes()

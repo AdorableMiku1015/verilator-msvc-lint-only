@@ -1,2 +1,0 @@
-// Read via -Fs; defines GOT_DEF7 which t_flag_f.v requires
-+define+GOT_DEF7=1

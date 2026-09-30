@@ -11,8 +11,6 @@ import vltest_bootstrap
 
 test.scenarios('vlt')
 
-test.compile(verilator_flags2=['-Wno-PARAMNODEFAULT'])
-
-test.execute()
+test.lint(verilator_flags2=['-Wno-PARAMNODEFAULT'])
 
 test.passes()

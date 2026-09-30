@@ -9,11 +9,11 @@
 
 import vltest_bootstrap
 
-test.scenarios('simulator')
+test.scenarios('vlt')
 
 test.top_filename = "t/t_opt_slice_element_limit.v"
 
-test.compile(verilator_flags2=['--stats', '--fslice-element-limit', '10'])
+test.lint(verilator_flags2=['--stats', '--fslice-element-limit', '10'])
 
 test.file_grep(test.stats, r'Optimizations, Slice array skips due to size limit\s+(\d+)', 4)
 

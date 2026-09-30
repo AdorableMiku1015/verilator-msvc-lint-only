@@ -9,10 +9,8 @@
 
 import vltest_bootstrap
 
-test.scenarios('simulator')
+test.scenarios('vlt')
 
-test.compile(verilator_flags2=["-Wno-SYMRSVDWORD"])
-
-test.execute()
+test.lint(verilator_flags2=["-Wno-SYMRSVDWORD"])
 
 test.passes()

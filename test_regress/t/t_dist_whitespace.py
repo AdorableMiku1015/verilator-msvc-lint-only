@@ -12,7 +12,7 @@ import collections
 
 test.scenarios('dist')
 
-Binary_Exempt_Re = r'(docs/.*\.png|test_regress/t/t_lint_bsspace_bad.v|test_regress/t/t_sys_file_basic_uz.dat)'
+Binary_Exempt_Re = r'(docs/.*\.png|test_regress/t/t_lint_bsspace_bad.v)'
 
 Tabs_Exempt_Re = r'(\.out$)|(/fstcpp)|(Makefile)|(\.mk$)|(\.mk\.in$)|test_regress/t/t_preproc\.v'
 

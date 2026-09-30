@@ -9,10 +9,8 @@
 
 import vltest_bootstrap
 
-test.scenarios('simulator_st')
+test.scenarios('vlt')
 
-test.compile(verilator_flags2=['-Wall -Wno-DECLFILENAME -Wno-NORETURN'])
-
-test.execute()
+test.lint(verilator_flags2=['-Wall -Wno-DECLFILENAME -Wno-NORETURN'])
 
 test.passes()

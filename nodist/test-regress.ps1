@@ -6,7 +6,7 @@
 # autoconf build.
 #
 #   nodist/test-regress.ps1                  # every lint-only test
-#   nodist/test-regress.ps1 t/t_flag_f.py    # selected tests
+#   nodist/test-regress.ps1 t/t_lint_implicit.py    # selected tests
 #   nodist/test-regress.ps1 --dist           # distribution rule tests
 #
 # Build first, from a Visual Studio x64 developer prompt:

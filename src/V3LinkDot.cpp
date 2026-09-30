@@ -6605,8 +6605,9 @@ void V3LinkDot::linkDotScope(AstNetlist* nodep) {
 // flag the placeholders below carry: erroringOn suppresses the warnings of the
 // later passes, and it is set by many other producers and copied by every pass
 // that builds a node around a placeholder, so a repair driven by it cannot tell
-// a hole from a node that merely stands next to one.  No pass copies the node
-// flag, so a marked node is exactly a node this file marked.
+// a hole from a node that merely stands next to one.  The node flag is only ever
+// set here, or copied onto a node that stands in for one set here, so a marked
+// node is exactly a hole this file knows about.
 
 void V3LinkDot::markUnresolved(AstNode* nodep) {
     // A reference that is part of the write target has lost that target, so the

@@ -41,6 +41,7 @@ public:
     // Replace or remove what markUnresolved() marked, and stop the run when a
     // marked node cannot be placed, so the later passes never see a tree they
     // cannot traverse
-    static void repairUnresolved(AstNetlist* nodep) VL_MT_DISABLED;};
+    static void repairUnresolved(AstNetlist* nodep) VL_MT_DISABLED;
+};
 
 #endif  // Guard

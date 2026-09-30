@@ -158,6 +158,7 @@ void AstNode::dump(std::ostream& str) const {
         if (dtypep()) str << " %Error-dtype-exp=null,got=" << nodeAddr(dtypep());
     }
     if (fileline()->erroringOn()) str << " [ERRORING]";
+    if (unresolved()) str << " [UNRESOLVED]";
     if (name() != "") {
         if (VN_IS(this, Const)) {
             str << "  " << name();  // Already quoted

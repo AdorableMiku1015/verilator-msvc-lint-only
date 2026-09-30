@@ -5,9 +5,9 @@
 # local build. Replaces the "make test" workflow that went away with the
 # autoconf build.
 #
-#   nodist/test-regress.ps1                  # every lint-only test
-#   nodist/test-regress.ps1 t/t_lint_implicit.py    # selected tests
-#   nodist/test-regress.ps1 --dist           # distribution rule tests
+#   nodist/test-regress.ps1                      # every lint-only test
+#   nodist/test-regress.ps1 t/t_lint_implicit.py  # selected tests
+#   nodist/test-regress.ps1 --dist                # distribution rule tests
 #
 # Build first, from a Visual Studio x64 developer prompt:
 #   cmake --preset win64-release

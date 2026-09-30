@@ -51,7 +51,7 @@ assertions but calls `test.lint(...)` instead of `test.compile(...)`, loses its
 `t_property_s_until_nfa`, whose two `test.lint()` runs still produce their
 existing goldens:
 
-- `t_EXAMPLE` (documented template; its `.v` is also a fixture for ten other
+- `t_EXAMPLE` (documented template; its `.v` is also a fixture for eleven other
   tests), `t_gen_forif` (genvar for-if elaboration; referenced by comments in
   `src/V3LinkDot.cpp` and `t_lint_block_redecl_bad.v`), `t_lint_implicit`,
   `t_lint_noreturn`, `t_lint_paramnodefault`, `t_langext_1`, `t_langext_2`,
@@ -66,8 +66,9 @@ existing goldens:
   `export` case of the package pair), `t_gen_missing` (keeps the
   generate-instantiation half of the `MODMISSING` pair), and
   `t_inside_unbounded_both` (keeps the `-Wno-INSIDETRUE` suppression check).
-- `t_mod_topmodule__underunder` (keeps the only check that `--top-module` may
-  name a module instantiated beneath another module).
+- `t_mod_topmodule__underunder` (keeps the only check that `--top-module`
+  disambiguates between two top-level modules; without the flag the run fails
+  with `MULTITOP`).
 
 Restored and repaired (1): `t_flag_hier0_bad` was already a `test.lint()` test
 whose golden had drifted; its `top_filename` now points at the surviving
@@ -75,12 +76,14 @@ whose golden had drifted; its `top_filename` now points at the surviving
 dropped, and its golden was regenerated with `HARNESS_UPDATE_GOLDEN=1`. This
 keeps the branch's only coverage of `--hierarchical-block` argument validation.
 
-Deleted tests (47) and files (111). The driver, its golden and its `.v`/`.sv`/
+Deleted tests (47) and files (120). The driver, its golden and its `.v`/`.sv`/
 `.cpp`/`.pli`/`.mem`/`.dat`/`.vc` fixtures are removed, except where a surviving
 tracked file mentions the basename. The sweep is run in both directions: a
 source is also orphaned when the only files that mentioned it were deleted by
 the same change, or when it was coupled to a driver by the default
-`top_filename` naming convention rather than by text.
+`top_filename` naming convention rather than by text. That second direction
+also removed the `t/t_config_libmap/` fixture directory and the
+`TestSimulator.h`/`TestVpi.h` headers, whose only consumers were deleted.
 
 That rule keeps these shared fixtures: `t_castdyn.v`,
 `t_cover_fsm_policy_accept_multi.v`, `t_covergroup_clocked_sample.v`,
@@ -88,14 +91,16 @@ That rule keeps these shared fixtures: `t_castdyn.v`,
 `t_flag_parameter.v`, `t_flag_topmodule.v`, `t_foreach_noivar.v`,
 `t_func_wide_out.v`, `t_gate_basic.v`, `t_gen_missing.v`,
 `t_inside_unbounded_both.v`, `t_interface_virtual.v`, `t_multitop_sig.v`,
-`t_package_export.v`, `t_param_concat.v`, `t_struct_init.v`,
-`t_sys_psprintf.v`, and the whole `t/t_config_libmap/` fixture directory.
+`t_package_export.v`, `t_param_concat.v`, `t_struct_init.v` and
+`t_sys_psprintf.v`.
 
-The `t/t_config_libmap/` directory is kept whole on evidence, not by
-assumption: its surviving consumer `t_config_libmap_inc` reports a different
-first line (the golden miscompares) when either the directory or just its
-library modules are removed, so `lib.map` and the modules it maps are live
-fixtures for that test.
+Deleting the `t/t_config_libmap/` directory does not disturb its last surviving
+mention: `t_config_libmap_inc.map` includes `lib.map`, but the config grammar
+rejects the `include` token without opening the file, so moving the whole
+directory out of the tree leaves `t_config_libmap_inc` passing byte-identically.
+An earlier attempt to justify keeping it ran the driver without the
+`nodist/test-regress.ps1` wrapper and misread a stale log; the decision here is
+the re-run under the wrapper.
 
 Stale references created by the pruning are updated in the same change:
 
@@ -127,11 +132,14 @@ pre-existing failures.
   coverage cannot exist in a build that never emits a model.
 - Accepted coverage losses, recorded rather than hidden: `t_debug_width`'s
   `--debug-width` invocation (its golden pinned an internal width error that no
-  longer occurs, and the option itself is a debug aid), and the positive
-  NFA/simulation half of `t_property_s_until_nfa` (it needs `--timing` and
-  coroutines). The `-Fs` command-file case that `t_flag_f` used to cover at
-  runtime is kept by its conversion, and the three orphaned goldens this change
-  does not touch (`t_cover_line.out`, `t_sarif.sarif.out`,
+  longer occurs, and the option itself is a debug aid); the two
+  `--hierarchical-block` backslash cases that `t_flag_hier0_bad` used to feed to
+  `V3Options` (the Windows harness rewrites `\` to `/`, so those values never
+  reached the parser here, and the two `V3Options` error paths are left without
+  a test); and the positive NFA/simulation half of `t_property_s_until_nfa` (it
+  needs `--timing` and coroutines). The `-Fs` command-file case that `t_flag_f`
+  used to cover at runtime is kept by its conversion, and the three orphaned
+  goldens this change does not touch (`t_cover_line.out`, `t_sarif.sarif.out`,
   `t_sarif_clean.sarif.out`) were already orphaned before it.
 
 ## Tasks

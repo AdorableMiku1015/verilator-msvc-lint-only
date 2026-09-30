@@ -456,8 +456,9 @@ class AstNode VL_NOT_FINAL {
         bool didWidth : 1;  // Did V3Width computation
         bool doingWidth : 1;  // Inside V3Width
         bool protect : 1;  // Protect name if protection is on
+        bool unresolved : 1;  // Name the link could not resolve, pending repair
         // Space for more flags here (there must be 8 bits in total)
-        uint8_t unused : 5;
+        uint8_t unused : 4;
     } m_flags;  // Attribute flags
 
     // State variable used by V3Broken for consistency checking. The top bit of this is byte is a
@@ -689,6 +690,8 @@ public:
     void doingWidth(bool flag) { m_flags.doingWidth = flag; }
     bool protect() const VL_MT_SAFE { return m_flags.protect; }
     void protect(bool flag) { m_flags.protect = flag; }
+    bool unresolved() const { return m_flags.unresolved; }
+    void unresolved(bool flag) { m_flags.unresolved = flag; }
 
     // TODO stomp these width functions out, and call via dtypep() instead
     inline int width() const VL_MT_STABLE;

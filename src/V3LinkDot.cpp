@@ -4875,6 +4875,10 @@ class LinkDotResolveVisitor final : public VNVisitor {
                             = createImplicitVar(m_curSymp, nodep, m_modp, m_modSymp, err);
                         AstVarRef* const newp
                             = new AstVarRef{nodep->fileline(), varp, VAccess::READ};
+                        // The reference stands in for the name that did not
+                        // resolve, so it keeps the mark: the repair step still has
+                        // to see the hole this pass deliberately papered over
+                        newp->unresolved(nodep->unresolved());
                         nodep->replaceWith(newp);
                         VL_DO_DANGLING(pushDeletep(nodep), nodep);
                     }
@@ -6569,18 +6573,21 @@ void V3LinkDot::linkDotPrimary(AstNetlist* nodep) {
     UINFO(2, __FUNCTION__ << ":");
     linkDotGuts(nodep, LDS_PRIMARY);
     V3Global::dumpCheckGlobalTree("linkdot", 0, dumpTreeEitherLevel() >= 6);
+    repairUnresolved(nodep);
 }
 
 void V3LinkDot::linkDotParamed(AstNetlist* nodep) {
     UINFO(2, __FUNCTION__ << ":");
     linkDotGuts(nodep, LDS_PARAMED);
     V3Global::dumpCheckGlobalTree("linkdotparam", 0, dumpTreeEitherLevel() >= 3);
+    repairUnresolved(nodep);
 }
 
 void V3LinkDot::linkDotScope(AstNetlist* nodep) {
     UINFO(2, __FUNCTION__ << ":");
     linkDotGuts(nodep, LDS_SCOPED);
     V3Global::dumpCheckGlobalTree("linkdot", 0, dumpTreeEitherLevel() >= 3);
+    repairUnresolved(nodep);
 }
 
 //######################################################################
@@ -6593,13 +6600,13 @@ void V3LinkDot::linkDotScope(AstNetlist* nodep) {
 // continue past those errors.  A marked node this step cannot place stops the
 // run where it would have stopped without the repair, rather than let the later
 // passes see a tree they cannot traverse.
-
-// True when a node is part of an expression that can itself be written: a
-// select or member selection, including an index or member name it resolves
-// through, and a dotted reference such as 'scope.item'
-static bool linkDotWritePath(const AstNode* backp) {
-    return VN_IS(backp, NodeSel) || VN_IS(backp, MemberSel) || VN_IS(backp, Dot);
-}
+//
+// The mark is the node's own unresolved() flag, not the fileline erroringOn
+// flag the placeholders below carry: erroringOn suppresses the warnings of the
+// later passes, and it is set by many other producers and copied by every pass
+// that builds a node around a placeholder, so a repair driven by it cannot tell
+// a hole from a node that merely stands next to one.  No pass copies the node
+// flag, so a marked node is exactly a node this file marked.
 
 void V3LinkDot::markUnresolved(AstNode* nodep) {
     // A reference that is part of the write target has lost that target, so the
@@ -6611,13 +6618,8 @@ void V3LinkDot::markUnresolved(AstNode* nodep) {
             if (assignp->lhsp() == childp) targetp = assignp;
             break;
         }
-        if (!linkDotWritePath(backp)) break;
     }
-    // A copy of the fileline marked as erroring is the existing way to say a
-    // node exists only because of an earlier error
-    FileLine* const newflp = new FileLine{targetp->fileline()};
-    newflp->erroringOn(true);
-    targetp->fileline(newflp);
+    targetp->unresolved(true);
 }
 
 class LinkDotRepairVisitor final : public VNVisitor {
@@ -6625,17 +6627,7 @@ class LinkDotRepairVisitor final : public VNVisitor {
     int m_unrepairable = 0;  // Marked nodes that cannot be replaced or removed
 
     // METHODS
-    static bool isMarked(const AstNode* nodep) { return nodep->fileline()->erroringOn(); }
-    // True when the write target still holds the reference that did not resolve.
-    // A later pass can also build an assignment around a placeholder, and that
-    // assignment inherits the mark on its fileline while its target is fine.
-    static bool writeTargetUnresolved(AstNode* lhsp) {
-        bool unresolved = false;
-        lhsp->foreach([&unresolved](AstNode* nodep) {
-            if (nodep->fileline()->erroringOn()) unresolved = true;
-        });
-        return unresolved;
-    }
+    static bool isMarked(const AstNode* nodep) { return nodep->unresolved(); }
     void replaceWithFalse(AstNode* nodep) {
         AstNodeExpr* const newp = new AstConst{nodep->fileline(), AstConst::BitFalseErroring{}};
         nodep->replaceWith(newp);
@@ -6644,23 +6636,13 @@ class LinkDotRepairVisitor final : public VNVisitor {
 
     // VISITORS
     void visit(AstNodeAssign* nodep) override {
-        if (!isMarked(nodep) || !writeTargetUnresolved(nodep->lhsp())) {
+        if (!isMarked(nodep)) {
             iterateChildren(nodep);
             return;
         }
         // Its write target did not resolve, so there is nothing to assign to
         UINFO(2, "  Removing assignment whose target did not resolve: " << nodep);
         VL_DO_DANGLING(pushDeletep(nodep->unlinkFrBack()), nodep);
-    }
-    void visit(AstParseRef* nodep) override {
-        if (!isMarked(nodep)) {
-            iterateChildren(nodep);
-            return;
-        }
-        // The reference that replaces a marked parse reference inherits its
-        // fileline, so this is a net rather than a path the link normally leaves
-        // behind; it keeps such a reference from making the repair fail closed
-        replaceWithFalse(nodep);
     }
     void visit(AstNodeVarRef* nodep) override {
         if (!isMarked(nodep)) {
@@ -6687,13 +6669,10 @@ class LinkDotRepairVisitor final : public VNVisitor {
         }
         replaceWithFalse(nodep);
     }
-    // A placeholder this feature or an earlier repair created is already usable
-    void visit(AstConst* nodep) override { iterateChildren(nodep); }
     void visit(AstNode* nodep) override {
-        // A mark can also arrive on a statement or block a later pass built
-        // around a placeholder, because it inherited the placeholder's fileline;
-        // only a marked expression can still be a hole this step has to fill
-        if (isMarked(nodep) && VN_IS(nodep, NodeExpr)) {
+        // Only a reference, or the assignment holding one as its write target, is
+        // ever marked, so anything else marked means the mark was placed wrongly
+        if (isMarked(nodep)) {
             ++m_unrepairable;
             UINFO(2, "  Unrepairable marked node: " << nodep);
         }

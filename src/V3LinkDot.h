@@ -30,6 +30,11 @@ enum VLinkDotStep : uint8_t { LDS_PRIMARY, LDS_PARAMED, LDS_SCOPED };
 class V3LinkDot final {
     static void dumpSubstep(const string& name) VL_MT_DISABLED;
     static void linkDotGuts(AstNetlist* rootp, VLinkDotStep step) VL_MT_DISABLED;
+    // Replace or remove what markUnresolved() marked, and stop the run when a
+    // marked node cannot be placed, so the later passes never see a tree they
+    // cannot traverse.  The entry points below call this, because they are the
+    // only places that can mark a node, so no other pass meets a marked node
+    static void repairUnresolved(AstNetlist* nodep) VL_MT_DISABLED;
 
 public:
     static void linkDotPrimary(AstNetlist* nodep) VL_MT_DISABLED;
@@ -38,10 +43,6 @@ public:
     // Mark a name this pass could not resolve, so repairUnresolved() can remove
     // the reference before the later passes read the tree
     static void markUnresolved(AstNode* nodep) VL_MT_DISABLED;
-    // Replace or remove what markUnresolved() marked, and stop the run when a
-    // marked node cannot be placed, so the later passes never see a tree they
-    // cannot traverse
-    static void repairUnresolved(AstNetlist* nodep) VL_MT_DISABLED;
 };
 
 #endif  // Guard

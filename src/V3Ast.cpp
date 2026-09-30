@@ -132,6 +132,7 @@ AstNode::AstNode(VNType t, FileLine* fl)
     m_flags.didWidth = false;
     m_flags.doingWidth = false;
     m_flags.protect = true;
+    m_flags.unresolved = false;
     m_flags.unused = 0;  // Initializing this avoids a read-modify-write on construction
     editCountInc();
 }

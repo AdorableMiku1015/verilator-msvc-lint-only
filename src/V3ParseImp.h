@@ -160,7 +160,9 @@ class V3ParseImp final {
 
     FileLine* m_bisonLastFileline = nullptr;  // Filename/linenumber of last token
     bool m_canRecoverSyntax = false;  // External source has an AST rollback checkpoint
-    bool m_syntaxError = false;  // Bison reported an error, including accepted recovery
+    int m_errorCount = 0;  // Syntax/lexer errors reported for this input
+    int m_unitErrorMark = 0;  // Error count when the current design unit began
+    int m_committedErrorMark = 0;  // Error count covered by the committed snapshot
     bool m_sourceQuarantined = false;  // This input was rolled back after a syntax error
     // Tree state after the last design unit this input completed; the rollback
     // target, so units parsed before the damage are kept
@@ -282,8 +284,11 @@ public:
     void syntaxError(const char* messagep) VL_MT_DISABLED;
     // A lexer-level error from damaged source; recovered by dropping the input
     void lexError(FileLine* flp, const char* messagep) VL_MT_DISABLED;
-    // Called from the grammar after a complete design unit
-    void commitUnit() VL_MT_DISABLED;
+    // Design-unit epochs: begin at the front token, finish at the end token,
+    // abort when bison resynchronizes after the unit was damaged
+    void beginUnit() VL_MT_DISABLED;
+    void finishUnit() VL_MT_DISABLED;
+    void abortUnit() VL_MT_DISABLED;
 
     // Return next token, for bison, since bison isn't class based, use a global THIS
     AstNetlist* rootp() const { return m_rootp; }

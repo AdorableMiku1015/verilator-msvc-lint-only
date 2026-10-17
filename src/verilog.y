@@ -1037,14 +1037,14 @@ descriptionList:                // IEEE: part of source_text
         ;
 
 description:                    // ==IEEE: description
-                module_declaration                      { PARSEP->commitUnit(); }
+                module_declaration                      { PARSEP->finishUnit(); }
         //                      // udp_declaration moved into module_declaration
         //                      // library_declaration and include_statement moved from library_description
         |       library_declaration                     { PARSEP->rootp()->addMiscsp($1); }
         |       include_statement                       { }
-        |       interface_declaration                   { PARSEP->commitUnit(); }
-        |       program_declaration                     { PARSEP->commitUnit(); }
-        |       package_declaration                     { PARSEP->commitUnit(); }
+        |       interface_declaration                   { PARSEP->finishUnit(); }
+        |       program_declaration                     { PARSEP->finishUnit(); }
+        |       package_declaration                     { PARSEP->finishUnit(); }
         |       package_itemTop                         { if ($1) PARSEP->unitPackage($1->fileline())->addStmtsp($1); }
         |       bind_directive                          { if ($1) PARSEP->unitPackage($1->fileline())->addStmtsp($1); }
         |       config_declaration                      { }
@@ -1054,7 +1054,7 @@ description:                    // ==IEEE: description
         |       yaT_UNCONNECTED_PULL0                   { PARSEP->unconnectedDrive(VOptionBool::OPT_FALSE); }
         |       yaT_UNCONNECTED_PULL1                   { PARSEP->unconnectedDrive(VOptionBool::OPT_TRUE); }
         |       vltItem                                 { }
-        |       error                                   { }  // LCOV_EXCL_LINE
+        |       error                                   { PARSEP->abortUnit(); }  // LCOV_EXCL_LINE
         ;
 
 timeunits_declaration<nodep>:   // ==IEEE: timeunits_declaration
@@ -1078,7 +1078,8 @@ package_declaration:            // ==IEEE: package_declaration
 
 packageFront<nodeModulep>:
                 yPACKAGE lifetimeE idAny ';'
-                        { $$ = new AstPackage{$<fl>3, *$3, PARSEP->libname()};
+                        { PARSEP->beginUnit();
+                          $$ = new AstPackage{$<fl>3, *$3, PARSEP->libname()};
                           if ($$->name() == "std") {
                               if ($$->fileline()->filename() != V3Options::getStdPackagePath()) {
                                   $$->v3error("Redeclaring the 'std' package is not allowed");
@@ -1225,7 +1226,8 @@ modFront<nodeModulep>:
         //                      // General note: all *Front functions must call symPushNew before
         //                      // any formal arguments, as the arguments must land in the new scope.
                 yMODULE lifetimeE idAny
-                        { $$ = new AstModule{$<fl>3, *$3, PARSEP->libname()};
+                        { PARSEP->beginUnit();
+                          $$ = new AstModule{$<fl>3, *$3, PARSEP->libname()};
                           $$->lifetime($2);
                           $$->inLibrary(PARSEP->inLibrary() || $$->fileline()->celldefineOn());
                           $$->modTrace(GRAMMARP->allTracingOn($$->fileline()));
@@ -1248,7 +1250,8 @@ importsAndParametersE<nodep>:   // IEEE: common part of module_declaration, inte
 
 udpFront<nodeModulep>:
                 yPRIMITIVE lifetimeE idAny
-                        { $$ = new AstPrimitive{$<fl>3, *$3, PARSEP->libname()};
+                        { PARSEP->beginUnit();
+                          $$ = new AstPrimitive{$<fl>3, *$3, PARSEP->libname()};
                           $$->inLibrary(true);
                           $$->lifetime($2);
                           $$->modTrace(false);
@@ -1539,7 +1542,8 @@ interface_declaration:          // IEEE: interface_declaration + interface_nonan
 
 intFront<nodeModulep>:
                 yINTERFACE lifetimeE idAny/*new_interface*/
-                        { $$ = new AstIface{$<fl>3, *$3, PARSEP->libname()};
+                        { PARSEP->beginUnit();
+                          $$ = new AstIface{$<fl>3, *$3, PARSEP->libname()};
                           $$->inLibrary(true);
                           $$->lifetime($2);
                           PARSEP->rootp()->addModulesp($$); }
@@ -1630,7 +1634,8 @@ program_declaration:            // IEEE: program_declaration + program_nonansi_h
 
 pgmFront<nodeModulep>:
                 yPROGRAM lifetimeE idAny/*new_program*/
-                        { $$ = new AstModule{$<fl>3, *$3, PARSEP->libname(), AstModule::Program{}};
+                        { PARSEP->beginUnit();
+                          $$ = new AstModule{$<fl>3, *$3, PARSEP->libname(), AstModule::Program{}};
                           $$->lifetime($2);
                           $$->inLibrary(PARSEP->inLibrary() || $$->fileline()->celldefineOn());
                           $$->modTrace(GRAMMARP->allTracingOn($$->fileline()));

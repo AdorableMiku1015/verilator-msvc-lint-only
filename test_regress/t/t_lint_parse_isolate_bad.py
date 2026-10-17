@@ -91,8 +91,8 @@ for mode in ('before', 'after', 'rec', 'ansi', 'prop', 'inst', 'udp', 'param', '
     if mode == 'stub':
         test.file_grep(log, r'%Warning-WIDTHTRUNC: t/t_lint_parse_isolate_stub.sv:')
     if mode == 'staged':
-        # The unit completed before the syntax error is linted in this run.
-        test.file_grep(log, r'%Warning-WIDTHTRUNC: t/t_lint_parse_isolate_staged\.sv:')
+        # Units completed before and after the damage are both linted.
+        test.file_grep_count(log, r'%Warning-WIDTHTRUNC: t/t_lint_parse_isolate_staged\.sv:', 2)
     if mode == 'inc':
         # The included file belongs to the failed input, so none of its
         # declarations may survive or produce diagnostics.

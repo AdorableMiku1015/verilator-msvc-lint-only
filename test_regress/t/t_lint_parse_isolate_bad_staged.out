@@ -1,13 +1,17 @@
-%Error: t/t_lint_parse_isolate_staged.sv:17:10: syntax error, unexpected '='
-   17 |   assign = ;
+%Error: t/t_lint_parse_isolate_staged.sv:18:10: syntax error, unexpected '='
+   18 |   assign = ;
       |          ^
         ... See the manual at https://verilator.org/verilator_doc.html?v=latest for more assistance.
-%Warning-WIDTHTRUNC: t/t_lint_parse_isolate_staged.sv:11:12: Operator ASSIGNW expects 1 bits on the Assign RHS, but Assign RHS's CONST '2'h3' generates 2 bits.
-                                                           : ... note: In instance 't.u_staged'
-   11 |   assign b = 2'b11;
+%Warning-WIDTHTRUNC: t/t_lint_parse_isolate_staged.sv:22:12: Operator ASSIGNW expects 1 bits on the Assign RHS, but Assign RHS's CONST '3'h5' generates 3 bits.
+                                                           : ... note: In instance 't.u_staged_after'
+   22 |   assign b = 3'b101;
       |            ^
                      ... For warning description see https://verilator.org/warn/WIDTHTRUNC?v=latest
                      ... Use "/* verilator lint_off WIDTHTRUNC */" and lint_on around source to disable this message.
+%Warning-WIDTHTRUNC: t/t_lint_parse_isolate_staged.sv:12:12: Operator ASSIGNW expects 1 bits on the Assign RHS, but Assign RHS's CONST '2'h3' generates 2 bits.
+                                                           : ... note: In instance 't.u_staged'
+   12 |   assign b = 2'b11;
+      |            ^
 %Warning-WIDTHTRUNC: t/t_lint_parse_isolate_good.sv:28:19: Operator ASSIGNW expects 3 bits on the Assign RHS, but Assign RHS's VARREF 'from_macro' generates 7 bits.
                                                          : ... note: In instance 't'
    28 |   assign data_out = from_macro;

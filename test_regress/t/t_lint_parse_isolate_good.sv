@@ -43,7 +43,9 @@ module t (
 `endif
 `ifdef TEST_STAGED
   logic staged_b;
+  logic staged_b2;
   staged_good u_staged (.a(a), .b(staged_b));
+  staged_after u_staged_after (.a(a), .b(staged_b2));
 `endif
 endmodule
 

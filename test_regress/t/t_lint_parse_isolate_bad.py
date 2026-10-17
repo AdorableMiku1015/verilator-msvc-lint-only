@@ -16,8 +16,8 @@ bad = 't/t_lint_parse_isolate_bad.v'
 good = 't/t_lint_parse_isolate_good.sv'
 
 for mode in ('before', 'after', 'rec', 'ansi', 'prop', 'inst', 'udp', 'param', 'inc', 'line',
-             'incmissing', 'staged', 'all', 'pp', 'ppnext', 'top', 'lib', 'stub', 'package',
-             'function', 'class'):
+             'incmissing', 'recinc', 'staged', 'all', 'pp', 'ppnext', 'top', 'lib', 'stub',
+             'package', 'function', 'class'):
     files = [prior, bad, good]
     flags = ['--error-limit', '0']
     defines = []
@@ -43,6 +43,10 @@ for mode in ('before', 'after', 'rec', 'ansi', 'prop', 'inst', 'udp', 'param', '
         # A `line directive must not let the input escape its own transaction,
         # so it uses its own file rather than a branch of the shared bad file.
         files = [prior, 't/t_lint_parse_isolate_line.sv', good]
+    elif mode == 'recinc':
+        # Include recursion fails preprocessing; the next input must still be
+        # read, so this also covers clearing the include-error latch.
+        files = [prior, 't/t_lint_parse_isolate_recinc.sv', bad]
     elif mode == 'staged':
         # A complete design unit before the damage is retained and still linted.
         files = [prior, 't/t_lint_parse_isolate_staged.sv', good]
@@ -61,10 +65,10 @@ for mode in ('before', 'after', 'rec', 'ansi', 'prop', 'inst', 'udp', 'param', '
         defines = ['+define+TEST_UNIT_' + mode.upper()]
     if mode == 'top':
         flags += ['--top-module', 'damaged']
-    elif mode not in ('all', 'pp', 'ppnext', 'package', 'function', 'class'):
+    elif mode not in ('all', 'pp', 'ppnext', 'recinc', 'package', 'function', 'class'):
         flags += ['--top-module', 't']
-    if mode not in ('after', 'all', 'pp', 'ppnext', 'line', 'staged', 'lib', 'package', 'function',
-                    'class'):
+    if mode not in ('after', 'all', 'pp', 'ppnext', 'line', 'recinc', 'staged', 'lib', 'package',
+                    'function', 'class'):
         defines += ['+define+TEST_REQUIRE_BAD_MACRO']
     test.lint(top_filename=files[0],
               v_other_filenames=files[1:],
@@ -77,7 +81,7 @@ for mode in ('before', 'after', 'rec', 'ansi', 'prop', 'inst', 'udp', 'param', '
         log,
         r'Internal Error|No top level module|Duplicate declaration|%Warning-MULTITOP:|%Error-MODMISSING:'
     )
-    if mode in ('all', 'pp', 'ppnext', 'incmissing'):
+    if mode in ('all', 'pp', 'ppnext', 'incmissing', 'recinc'):
         test.file_grep_not(log, r'%Warning-(WIDTHTRUNC|CASEINCOMPLETE|LATCH):')
     elif mode in ('package', 'function', 'class'):
         test.file_grep(log, r'%Warning-WIDTHTRUNC: t/t_lint_parse_isolate_unit.sv:')
@@ -103,6 +107,10 @@ for mode in ('before', 'after', 'rec', 'ansi', 'prop', 'inst', 'udp', 'param', '
     elif mode == 'incmissing':
         test.file_grep(log, r'Cannot find include file')
         test.file_grep_not(log, r'%Error: t/t_lint_parse_isolate_good\.sv')
+    elif mode == 'recinc':
+        # The include-depth guard fires once, and the next input is still read.
+        test.file_grep(log, r'Recursive inclusion')
+        test.file_grep(log, r'%Error: t/t_lint_parse_isolate_bad\.v:\d+:\d+: syntax error')
     if mode == 'ppnext':
         # Only the damaged input reports the unterminated conditional; the next
         # input's own syntax error is reported instead of being swallowed.
@@ -113,6 +121,9 @@ for mode in ('before', 'after', 'rec', 'ansi', 'prop', 'inst', 'udp', 'param', '
     elif mode == 'udp':
         # The table lexer reports its own EOF error before the parser reports the
         # missing table field; both are confined to the damaged input.
+        test.file_grep(log, r'Exiting due to (\d+) error\(s\)', 2)
+    elif mode == 'recinc':
+        # The recursive include plus the next input's syntax error.
         test.file_grep(log, r'Exiting due to (\d+) error\(s\)', 2)
     elif mode != 'pp':
         test.file_grep(log, r'Exiting due to (\d+) error\(s\)', 1)

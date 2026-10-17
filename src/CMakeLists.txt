@@ -295,6 +295,10 @@ file(TO_NATIVE_PATH ${srcdir}/flexfix FLEXFIX)
 file(TO_NATIVE_PATH ${srcdir}/../bin/verilator_includer VERILATOR_INCLUDER)
 file(TO_NATIVE_PATH ${srcdir}/config_rev CONFIG_REV)
 
+# The autoconf build substituted these from AC_INIT. Keep the same strings in
+# the CMake build so --version and the documentation links name Verilator.
+set(PACKAGE_STRING "Verilator ${PROJECT_VERSION}")
+set(PACKAGE_VERSION_NUMBER_STRING "${PROJECT_VERSION}")
 configure_file(config_package.h.in config_package.h @ONLY)
 
 # The built-in std package and lint waivers are read on every lint run. Compile

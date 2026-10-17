@@ -13,9 +13,9 @@
 // SPDX-License-Identifier: LGPL-3.0-only OR Artistic-2.0
 
 
-// Autoconf substitutes this with the strings from AC_INIT.
-#define PACKAGE_STRING ""
-#define PACKAGE_VERSION_NUMBER_STRING "0.000"
+// Substituted with the project name and version; the CMake build supplies them.
+#define PACKAGE_STRING "@PACKAGE_STRING@"
+#define PACKAGE_VERSION_NUMBER_STRING "@PACKAGE_VERSION_NUMBER_STRING@"
 // Otherwise Autoheader generates it (with all the same macros and more)
 
 // Force ccache recompilation on PACKAGE_STRING change

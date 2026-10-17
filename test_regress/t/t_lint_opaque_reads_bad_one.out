@@ -1,0 +1,16 @@
+%Error: t/t_lint_opaque_reads_bad.v:37:23: Can't find definition of task/function: 'absent_fn'
+   37 |   always_comb r = a ^ absent_fn(known(x), opaque_signal);
+      |                       ^~~~~~~~~
+        ... See the manual at https://verilator.org/verilator_doc.html?v=latest for more assistance.
+%Warning-CASEINCOMPLETE: t/t_lint_opaque_reads_bad.v:49:5: Case values incompletely covered (example pattern 0x1)
+   49 |     case (a)
+      |     ^~~~
+                         ... For warning description see https://verilator.org/warn/CASEINCOMPLETE?v=latest
+                         ... Use "/* verilator lint_off CASEINCOMPLETE */" and lint_on around source to disable this message.
+%Warning-LATCH: t/t_lint_opaque_reads_bad.v:48:3: Latch inferred for signal 'b' (not all control paths of combinational always assign a value)
+                                                : ... Suggest use of always_latch for intentional latches
+   48 |   always_comb begin
+      |   ^~~~~~~~~~~
+                ... For warning description see https://verilator.org/warn/LATCH?v=latest
+                ... Use "/* verilator lint_off LATCH */" and lint_on around source to disable this message.
+%Error: Exiting due to

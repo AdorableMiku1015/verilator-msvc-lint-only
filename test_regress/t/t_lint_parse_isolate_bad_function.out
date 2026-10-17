@@ -1,0 +1,10 @@
+%Error: t/t_lint_parse_isolate_bad.v:32:11: syntax error, unexpected end of file
+   32 |   initial begin
+      |           ^~~~~
+        ... See the manual at https://verilator.org/verilator_doc.html?v=latest for more assistance.
+%Warning-WIDTHTRUNC: t/t_lint_parse_isolate_unit.sv:23:3: Operator ASSIGN expects 2 bits on the Assign RHS, but Assign RHS's VARREF 'value' generates 7 bits.
+   23 |   return value;
+      |   ^~~~~~
+                     ... For warning description see https://verilator.org/warn/WIDTHTRUNC?v=latest
+                     ... Use "/* verilator lint_off WIDTHTRUNC */" and lint_on around source to disable this message.
+%Error: Exiting due to

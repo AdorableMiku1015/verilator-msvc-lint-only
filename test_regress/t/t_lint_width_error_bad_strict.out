@@ -1,0 +1,12 @@
+%Error-ENUMVALUE: t/t_lint_width_error_bad.v:30:25: Implicit conversion to enum 'enum{}t.state_t' from 'logic[1:0]' (IEEE 1800-2023 6.19.3)
+                                                  : ... note: In instance 't'
+                                                  : ... Suggest use enum's mnemonic, or static cast
+   30 |   assign state = data_in[1:0];
+      |                         ^
+                  ... For error description see https://verilator.org/warn/ENUMVALUE?v=latest
+%Error: t/t_lint_width_error_bad.v:42:13: Assign RHS expects a CLASSREFDTYPE 'Cls', got BASICDTYPE 'bit'
+                                        : ... note: In instance 't'
+   42 |   initial c = 1;
+      |             ^
+        ... See the manual at https://verilator.org/verilator_doc.html?v=latest for more assistance.
+%Error: Exiting due to

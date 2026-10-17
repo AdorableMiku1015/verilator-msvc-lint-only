@@ -1,0 +1,6 @@
+%Error-ZEROREPL: t/t_lint_width_error_bad.v:21:23: Replication value of 0 is only legal under a concatenation (IEEE 1800-2023 11.4.12.1)
+                                                 : ... note: In instance 't'
+   21 |   assign data_out = {0{data_in}};
+      |                       ^
+                 ... For error description see https://verilator.org/warn/ZEROREPL?v=latest
+%Error: Exiting due to

@@ -309,15 +309,24 @@ class LinkCellsVisitor final : public VNVisitor {
             // If file not found, make AstNotFoundModule, rather than error out.
             // We'll throw the error when we know the module will really be needed.
             const string prettyName = AstNode::prettyName(modName);
-            V3Parse parser{v3Global.rootp(), m_filterp};
-            // true below -> other simulators treat modules in link-found files as library cells
-            parser.parseFile(nodep->fileline(), prettyName, true, false, m_modp->libname(), "",
-                             modName);
-            V3Error::abortIfErrors();
-            // We've read new modules, grab new pointers to their names
+            if (!v3Global.quarantinedModuleFileline(modName, libname)) {
+                V3Parse parser{v3Global.rootp(), m_filterp};
+                // Other simulators treat modules in link-found files as library cells.
+                parser.parseFile(nodep->fileline(), prettyName, true, false, m_modp->libname(), "",
+                                 modName);
+            }
+            V3Error::abortIfUnrecoverableErrors();
+            // Concrete definitions always win over rejected declaration identities.
             readModNames();
-            // Check again
             modp = findModuleSym(modName, libname);
+            if (!modp) {
+                if (FileLine* const flp = v3Global.quarantinedModuleFileline(modName, libname)) {
+                    modp = new AstNotFoundModule{flp, modName, libname};
+                    modp->inLibrary(true);
+                    v3Global.rootp()->addModulesp(modp);
+                    readModNames();
+                }
+            }
             if (!modp) {
                 // This shouldn't throw a message as parseFile will create
                 // a AstNotFoundModule for us

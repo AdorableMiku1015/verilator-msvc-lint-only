@@ -1,0 +1,45 @@
+%Error: t/t_lint_opaque_args_bad.v:29:14: Signal definition not found, and implicit disabled with `default_nettype: 'missing_param'
+   29 |       .EXTRA(missing_param)
+      |              ^~~~~~~~~~~~~
+        ... See the manual at https://verilator.org/verilator_doc.html?v=latest for more assistance.
+%Error: t/t_lint_opaque_args_bad.v:32:14: Signal definition not found, and implicit disabled with `default_nettype: 'missing_arg'
+                                        : ... Suggested alternative: 'missing_param'
+   32 |       .extra(missing_arg),
+      |              ^~~~~~~~~~~
+%Error-MODMISSING: t/t_lint_opaque_args_bad.v:27:3: Cannot find file containing module: 'absent_ip'
+   27 |   absent_ip #(
+      |   ^~~~~~~~~
+                   ... For error description see https://verilator.org/warn/MODMISSING?v=latest
+                   ... Looked in:
+                        t/absent_ip
+                        t/absent_ip.v
+                        t/absent_ip.sv
+                        absent_ip
+                        absent_ip.v
+                        absent_ip.sv
+                        obj_vlt/t_lint_opaque_args_bad/absent_ip
+                        obj_vlt/t_lint_opaque_args_bad/absent_ip.v
+                        obj_vlt/t_lint_opaque_args_bad/absent_ip.sv
+                   ... With current working directory '...'
+%Warning-SELRANGE: t/t_lint_opaque_args_bad.v:31:22: Selection index out of range: 20:20 outside 6:0
+                                                   : ... note: In instance 't'
+   31 |       .bad_select(bus[20]),
+      |                      ^
+                   ... For warning description see https://verilator.org/warn/SELRANGE?v=latest
+                   ... Use "/* verilator lint_off SELRANGE */" and lint_on around source to disable this message.
+%Warning-SELRANGE: t/t_lint_opaque_args_bad.v:28:23: Selection index out of range: 20:20 outside 6:0
+                                                   : ... note: In instance 't'
+   28 |       .WIDTH(PARAM_BUS[20]),
+      |                       ^
+%Warning-CASEINCOMPLETE: t/t_lint_opaque_args_bad.v:19:5: Case values incompletely covered (example pattern 0x1)
+   19 |     case (a)
+      |     ^~~~
+                         ... For warning description see https://verilator.org/warn/CASEINCOMPLETE?v=latest
+                         ... Use "/* verilator lint_off CASEINCOMPLETE */" and lint_on around source to disable this message.
+%Warning-LATCH: t/t_lint_opaque_args_bad.v:18:3: Latch inferred for signal 'b' (not all control paths of combinational always assign a value)
+                                               : ... Suggest use of always_latch for intentional latches
+   18 |   always_comb begin
+      |   ^~~~~~~~~~~
+                ... For warning description see https://verilator.org/warn/LATCH?v=latest
+                ... Use "/* verilator lint_off LATCH */" and lint_on around source to disable this message.
+%Error: Exiting due to

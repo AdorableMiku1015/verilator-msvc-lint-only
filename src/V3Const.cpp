@@ -4189,8 +4189,11 @@ class ConstVisitor final : public VNVisitor {
     // If output of a presel didn't get consted, chances are V3Param didn't visit properly
     void visit(AstNodePreSel*) override {}
 
-    // Ignored, can eliminate early
+    // Legacy ignored calls can disappear early. Diagnostic operands must not
+    // be folded, required to be constant, or discarded before width and usage
+    // checks; the pipeline removes them explicitly after V3Undriven.
     void visit(AstSysIgnore* nodep) override {
+        if (nodep->lintOnly()) return;
         iterateChildren(nodep);
         if (m_doNConst) VL_DO_DANGLING(pushDeletep(nodep->unlinkFrBack()), nodep);
     }

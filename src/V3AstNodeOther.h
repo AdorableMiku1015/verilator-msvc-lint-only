@@ -1651,6 +1651,7 @@ public:
     VTimescale timeunit() const { return m_timeunit; }
     void timeunit(const VTimescale& value) { m_timeunit = value; }
     VTimescale timeprecision() const { return m_timeprecision; }
+    void timeprecision(const VTimescale& value) { m_timeprecision = value; }
     void timeInit() {
         m_timeunit = v3Global.opt.timeDefaultUnit();
         m_timeprecision = v3Global.opt.timeDefaultPrec();

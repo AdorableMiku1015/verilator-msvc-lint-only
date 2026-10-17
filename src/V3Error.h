@@ -734,6 +734,9 @@ void v3errorEndFatal(std::ostringstream& sstr)
 #define v3warnCode(code, msg) v3errorEnd(v3errorBuildMessage(V3Error::v3errorPrep(code), msg))
 #define v3warnCodeFatal(code, msg) \
     v3errorEndFatal(v3errorBuildMessage(V3Error::v3errorPrep(code), msg))
+// Use only where the reporting pass repairs the tree before returning.
+#define v3warnRecoverable(code, msg) \
+    v3errorEnd(v3errorBuildMessage(V3Error::v3errorPrepRecoverable(V3ErrorCode::code), msg))
 #define v3warn(code, msg) v3warnCode(V3ErrorCode::code, msg)
 #define v3info(msg) v3warnCode(V3ErrorCode::EC_INFO, msg)
 #define v3error(msg) v3warnCode(V3ErrorCode::EC_ERROR, msg)

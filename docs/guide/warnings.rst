@@ -76,6 +76,41 @@ understand Verilator's warning output should read the SARIF JSON output
 created with :vlopt:`--diagnostics-sarif`.
 
 
+Lint Continuation
+=================
+
+This lint-only build continues collecting independent diagnostics after an
+ordinary warning is promoted to an error with :vlopt:`-Werror-\<message\>`.
+Promotion changes the exit status, not which lint checks run. Missing modules,
+repaired unresolved names, and the width errors :option:`ENUMITEMWIDTH`,
+:option:`ENUMVALUE`, and :option:`ZEROREPL` also allow later lint checks to run.
+These errors still produce a nonzero exit status; they are not suppressed.
+
+Actual port/parameter operands of unavailable modules, arguments of unresolved
+calls, and read expressions on the right side of invalid assignments remain
+available for independent name, type and selection checks. Unknown interfaces
+do not supply invented formal widths or directions. Usage analysis treats opaque
+connections as potentially read or driven, not as evidence of a definite writer;
+known nested function formals retain their normal access rules.
+
+After a recoverable SystemVerilog parser syntax error, the entire affected
+input file is excluded from subsequent lint checks, including any complete
+design units or compilation-unit declarations in that file. Other independent
+files continue to be checked. Valid preprocessor definitions from the rejected
+file remain available to later files. If the requested top is unavailable after
+this exclusion, lint checks the remaining independent roots instead; the
+original syntax error still makes the invocation fail. A valid replacement
+module in another input file takes precedence over the rejected declaration.
+
+Lexer and preprocessor errors, errors in control or library-map files, resource
+exhaustion, and semantic errors that leave an unusable tree may still stop
+linting. Consumers of declarations from a rejected file may also remain
+uncheckable. :vlopt:`--error-limit` remains a hard limit, including for errors
+that otherwise allow continuation. Use :vlopt:`--error-limit` with a value of
+zero to disable that limit when collecting diagnostics for an incomplete
+project.
+
+
 List Of Warnings
 ================
 

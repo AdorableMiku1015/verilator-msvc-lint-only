@@ -609,6 +609,18 @@ class UndrivenVisitor final : public VNVisitorConst {
             }
         }
 
+        if (m_inBBox) {
+            // An opaque argument may be read or driven, but it is not evidence
+            // of a definite write by this process. Preserve any real writer's
+            // origin and process flags for subsequent multidriver checks.
+            for (int usr = 1; usr < (m_alwaysCombp ? 3 : 2); ++usr) {
+                UndrivenVarEntry* const entryp = getEntryp(nodep->varp(), usr);
+                entryp->drivenWhole(static_cast<const AstNode*>(nodep));
+                entryp->usedWhole(nodep);
+            }
+            return;
+        }
+
         // If writeSummary is enabled, task/function definitions are treated as non-executed.
         // Remember that anything driven here doesn't count toward MULTIDRIVEN.
         bool ftaskDef = false;
@@ -763,10 +775,11 @@ class UndrivenVisitor final : public VNVisitorConst {
         }
     }
 
-    // Don't know what black boxed calls do, assume in+out
+    // Opaque calls may read or write; retained RHS and parameter expressions
+    // are known reads and must not hide independent undriven diagnostics.
     void visit(AstSysIgnore* nodep) override {
         VL_RESTORER(m_inBBox);
-        m_inBBox = true;
+        if (!nodep->readOnly()) m_inBBox = true;
         iterateChildrenConst(nodep);
     }
 
@@ -854,7 +867,11 @@ class UndrivenVisitor final : public VNVisitorConst {
 
     void visit(AstNodeFTaskRef* nodep) override {
         VL_RESTORER(m_inFTaskRef);
+        VL_RESTORER(m_inBBox);
         m_inFTaskRef = true;
+        // A known call evaluates arguments according to its own formal
+        // directions, regardless of how an outer opaque call uses its result.
+        if (nodep->taskp()) m_inBBox = false;
 
         iterateChildrenConst(nodep);
 

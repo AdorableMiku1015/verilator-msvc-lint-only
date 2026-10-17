@@ -122,8 +122,9 @@ static void process() {
 
         // Sort modules by level so later algorithms don't need to care
         V3LinkLevel::modSortByLevel();
-        V3Error::abortIfErrors();
+        V3Error::abortIfUnrecoverableErrors();
         if (v3Global.opt.debugExitParse()) {
+            V3Error::abortIfErrors();
             cout << "--debug-exit-parse: Exiting after parse\n";
             v3Global.vlExit(0);
         }
@@ -145,8 +146,8 @@ static void process() {
         V3LinkJump::linkJump(v3Global.rootp());
         // Convert --/++ to normal operations. Must be after LinkJump.
         V3LinkInc::linkIncrements(v3Global.rootp());
-        // Unresolved names were repaired where they were reported, so keep
-        // linting past them; any other error still stops at this tolerant gate.
+        // Continue past repaired names and promoted ordinary warnings. Errors
+        // that leave an unusable tree still stop at this tolerant gate.
         V3Error::abortIfUnrecoverableErrors();
 
         if (doLintProfile) {
@@ -189,9 +190,9 @@ static void process() {
         // Calculate and check widths, edit tree to TRUNC/EXTRACT any width mismatches
         V3Width::width(v3Global.rootp());
 
-        // An unresolved module leaves a usable placeholder behind, so keep
-        // linting past that error; any other error still stops here.  Missing
-        // modules are then reported with the rest at the end of verilate().
+        // Missing-module placeholders and explicitly repaired width errors
+        // leave a usable tree. Keep collecting diagnostics after those errors,
+        // but stop here if any error has not been made safe for later passes.
         V3Error::abortIfUnrecoverableErrors();
 
         // Commit to the widths we've chosen; Make widthMin==width
@@ -248,6 +249,9 @@ static void process() {
         // Signal based lint checks, no change to structures
         // Must be before first constification pass drops dead code
         V3Undriven::undrivenAll(v3Global.rootp());
+        // Opaque operands are for diagnostics and liveness only. Remove them
+        // even when const-before-dfg is disabled, before executable lowering.
+        V3LinkDot::removeIgnored(v3Global.rootp());
 
         // Assertion insertion
         //    After we've added block coverage, but before other nasty transforms

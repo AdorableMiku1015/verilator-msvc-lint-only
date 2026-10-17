@@ -248,7 +248,11 @@ void V3ErrorGuarded::v3errorEndGuts(const std::ostringstream& sstr, const string
             incErrors();
             // A suppressed or duplicate message left the flag this message was
             // prepared with set but uncounted; the next v3errorPrep() clears it
-            if (m_message.code().recoverableError() || m_message.recoverable()) {
+            // Promoting an ordinary warning changes its severity, not the AST
+            // invariants. It must not hide independent diagnostics in later passes.
+            const V3ErrorCode code = m_message.code();
+            if (code.recoverableError() || m_message.recoverable()
+                || (!code.hardError() && !code.pretendError())) {
                 incRecoverableErrors();
             }
         } else {

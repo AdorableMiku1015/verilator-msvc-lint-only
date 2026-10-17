@@ -6,5 +6,4 @@
    24 |     eventually [2] a;
       |                  ^
         ... See the manual at https://verilator.org/verilator_doc.html?v=latest for more assistance.
-%Error: Cannot continue
-        ... This fatal error may be caused by the earlier error(s); resolve those first.
+%Error: Exiting due to

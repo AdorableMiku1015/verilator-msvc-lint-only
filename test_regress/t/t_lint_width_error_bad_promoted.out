@@ -1,0 +1,17 @@
+%Error-WIDTHTRUNC: t/t_lint_width_error_bad.v:34:19: Operator ASSIGNW expects 2 bits on the Assign RHS, but Assign RHS's VARREF 'data_in' generates 3 bits.
+                                                   : ... note: In instance 't'
+   34 |   assign data_out = data_in;
+      |                   ^
+                   ... For error description see https://verilator.org/warn/WIDTHTRUNC?v=latest
+%Warning-CASEINCOMPLETE: t/t_lint_width_error_bad.v:15:5: Case values incompletely covered (example pattern 0x1)
+   15 |     case (a)
+      |     ^~~~
+                         ... For warning description see https://verilator.org/warn/CASEINCOMPLETE?v=latest
+                         ... Use "/* verilator lint_off CASEINCOMPLETE */" and lint_on around source to disable this message.
+%Warning-LATCH: t/t_lint_width_error_bad.v:14:3: Latch inferred for signal 'b' (not all control paths of combinational always assign a value)
+                                               : ... Suggest use of always_latch for intentional latches
+   14 |   always_comb begin
+      |   ^~~~~~~~~~~
+                ... For warning description see https://verilator.org/warn/LATCH?v=latest
+                ... Use "/* verilator lint_off LATCH */" and lint_on around source to disable this message.
+%Error: Exiting due to

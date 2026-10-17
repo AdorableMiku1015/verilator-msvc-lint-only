@@ -1,0 +1,25 @@
+%Error: t/t_lint_opaque_args_bad.v:41:11: Can't find definition of scope/variable: 'absent_scope'
+   41 |   initial absent_scope.task_name(bus[20], missing_arg, opaque_in, opaque_out);
+      |           ^~~~~~~~~~~~
+        ... See the manual at https://verilator.org/verilator_doc.html?v=latest for more assistance.
+%Error: t/t_lint_opaque_args_bad.v:41:43: Can't find definition of variable: 'missing_arg'
+   41 |   initial absent_scope.task_name(bus[20], missing_arg, opaque_in, opaque_out);
+      |                                           ^~~~~~~~~~~
+%Warning-SELRANGE: t/t_lint_opaque_args_bad.v:41:37: Selection index out of range: 20:20 outside 6:0
+                                                   : ... note: In instance 't'
+   41 |   initial absent_scope.task_name(bus[20], missing_arg, opaque_in, opaque_out);
+      |                                     ^
+                   ... For warning description see https://verilator.org/warn/SELRANGE?v=latest
+                   ... Use "/* verilator lint_off SELRANGE */" and lint_on around source to disable this message.
+%Warning-CASEINCOMPLETE: t/t_lint_opaque_args_bad.v:19:5: Case values incompletely covered (example pattern 0x1)
+   19 |     case (a)
+      |     ^~~~
+                         ... For warning description see https://verilator.org/warn/CASEINCOMPLETE?v=latest
+                         ... Use "/* verilator lint_off CASEINCOMPLETE */" and lint_on around source to disable this message.
+%Warning-LATCH: t/t_lint_opaque_args_bad.v:18:3: Latch inferred for signal 'b' (not all control paths of combinational always assign a value)
+                                               : ... Suggest use of always_latch for intentional latches
+   18 |   always_comb begin
+      |   ^~~~~~~~~~~
+                ... For warning description see https://verilator.org/warn/LATCH?v=latest
+                ... Use "/* verilator lint_off LATCH */" and lint_on around source to disable this message.
+%Error: Exiting due to

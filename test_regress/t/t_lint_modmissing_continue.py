@@ -13,8 +13,8 @@ test.scenarios('vlt')
 
 # Missing module only: the later case/latch checks still run.
 test.lint(fails=True, expect_filename=test.golden_filename)
-# Missing module plus an error that is not recoverable: the later checks are
-# skipped again, so no case/latch warning may appear.
+# Missing module plus a repaired width error: both errors and the later
+# case/latch warnings must be retained.
 test.lint(v_flags2=['+define+T_LINT_MODMISSING_CONTINUE_MIXED'],
           fails=True,
           expect_filename='t/t_lint_modmissing_continue_mixed.out')

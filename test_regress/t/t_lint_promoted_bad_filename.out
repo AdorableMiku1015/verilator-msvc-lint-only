@@ -1,0 +1,34 @@
+%Warning-PROTECTED: t/t_lint_promoted_bad.v:14:17: A '`pragma protected data_block' encrypted section was detected and will be skipped.
+                    ... For warning description see https://verilator.org/warn/PROTECTED?v=latest
+                    ... Use "/* verilator lint_off PROTECTED */" and lint_on around source to disable this message.
+%Error-DECLFILENAME: t/t_lint_promoted_bad.v:19:8: Filename 't_lint_promoted_bad' does not match MODULE name: 't'
+   19 | module t (
+      |        ^
+                     ... For error description see https://verilator.org/warn/DECLFILENAME?v=latest
+%Error-MODMISSING: t/t_lint_promoted_bad.v:23:3: Cannot find file containing module: 'missing_ip'
+   23 |   missing_ip u_ip ();
+      |   ^~~~~~~~~~
+                   ... For error description see https://verilator.org/warn/MODMISSING?v=latest
+                   ... Looked in:
+                        t/missing_ip
+                        t/missing_ip.v
+                        t/missing_ip.sv
+                        missing_ip
+                        missing_ip.v
+                        missing_ip.sv
+                        obj_vlt/t_lint_promoted_bad/missing_ip
+                        obj_vlt/t_lint_promoted_bad/missing_ip.v
+                        obj_vlt/t_lint_promoted_bad/missing_ip.sv
+                   ... With current working directory '...'
+%Warning-CASEINCOMPLETE: t/t_lint_promoted_bad.v:25:5: Case values incompletely covered (example pattern 0x1)
+   25 |     case (a)
+      |     ^~~~
+                         ... For warning description see https://verilator.org/warn/CASEINCOMPLETE?v=latest
+                         ... Use "/* verilator lint_off CASEINCOMPLETE */" and lint_on around source to disable this message.
+%Warning-LATCH: t/t_lint_promoted_bad.v:24:3: Latch inferred for signal 'b' (not all control paths of combinational always assign a value)
+                                            : ... Suggest use of always_latch for intentional latches
+   24 |   always_comb begin
+      |   ^~~~~~~~~~~
+                ... For warning description see https://verilator.org/warn/LATCH?v=latest
+                ... Use "/* verilator lint_off LATCH */" and lint_on around source to disable this message.
+%Error: Exiting due to

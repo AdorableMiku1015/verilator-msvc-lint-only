@@ -1,0 +1,22 @@
+%Error: t/t_lint_call_target_bad.v:38:28: Can't find definition of variable: 'missing_target'
+   38 |   assign result = out_func(missing_target, bus);
+      |                            ^~~~~~~~~~~~~~
+        ... See the manual at https://verilator.org/verilator_doc.html?v=latest for more assistance.
+%Warning-WIDTHTRUNC: t/t_lint_call_target_bad.v:38:19: Operator FUNCREF 'out_func' expects 2 bits on the Function Argument, but Function Argument's VARREF 'bus' generates 7 bits.
+                                                     : ... note: In instance 't'
+   38 |   assign result = out_func(missing_target, bus);
+      |                   ^~~~~~~~
+                     ... For warning description see https://verilator.org/warn/WIDTHTRUNC?v=latest
+                     ... Use "/* verilator lint_off WIDTHTRUNC */" and lint_on around source to disable this message.
+%Warning-CASEINCOMPLETE: t/t_lint_call_target_bad.v:15:5: Case values incompletely covered (example pattern 0x1)
+   15 |     case (a)
+      |     ^~~~
+                         ... For warning description see https://verilator.org/warn/CASEINCOMPLETE?v=latest
+                         ... Use "/* verilator lint_off CASEINCOMPLETE */" and lint_on around source to disable this message.
+%Warning-LATCH: t/t_lint_call_target_bad.v:14:3: Latch inferred for signal 'b' (not all control paths of combinational always assign a value)
+                                               : ... Suggest use of always_latch for intentional latches
+   14 |   always_comb begin
+      |   ^~~~~~~~~~~
+                ... For warning description see https://verilator.org/warn/LATCH?v=latest
+                ... Use "/* verilator lint_off LATCH */" and lint_on around source to disable this message.
+%Error: Exiting due to

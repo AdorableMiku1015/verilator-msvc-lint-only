@@ -1,0 +1,16 @@
+%Error: t/t_lint_inc_target_bad.v:24:11: Can't find definition of variable: 'absent'
+   24 |   initial absent--;
+      |           ^~~~~~
+        ... See the manual at https://verilator.org/verilator_doc.html?v=latest for more assistance.
+%Warning-CASEINCOMPLETE: t/t_lint_inc_target_bad.v:14:5: Case values incompletely covered (example pattern 0x1)
+   14 |     case (a)
+      |     ^~~~
+                         ... For warning description see https://verilator.org/warn/CASEINCOMPLETE?v=latest
+                         ... Use "/* verilator lint_off CASEINCOMPLETE */" and lint_on around source to disable this message.
+%Warning-LATCH: t/t_lint_inc_target_bad.v:13:3: Latch inferred for signal 'b' (not all control paths of combinational always assign a value)
+                                              : ... Suggest use of always_latch for intentional latches
+   13 |   always_comb begin
+      |   ^~~~~~~~~~~
+                ... For warning description see https://verilator.org/warn/LATCH?v=latest
+                ... Use "/* verilator lint_off LATCH */" and lint_on around source to disable this message.
+%Error: Exiting due to

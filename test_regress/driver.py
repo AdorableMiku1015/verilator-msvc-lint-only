@@ -2000,6 +2000,9 @@ class VlTest:
 
         logfh = None
         if logfile:
+            # Repeated lint runs reuse the log path; grep must see this run,
+            # not the contents cached by a check on an earlier run.
+            self._file_contents_cache.pop(logfile, None)
             logfh = open(logfile, 'wb')  # pylint: disable=consider-using-with
 
         if not Args.interactive_debugger and pty is not None:

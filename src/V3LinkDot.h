@@ -43,6 +43,8 @@ public:
     // Mark a name this pass could not resolve, so repairUnresolved() can remove
     // the reference before the later passes read the tree
     static void markUnresolved(AstNode* nodep) VL_MT_DISABLED;
+    // Diagnostic-only operands have been checked; do not lower them as executable code.
+    static void removeIgnored(AstNetlist* nodep) VL_MT_DISABLED;
 };
 
 #endif  // Guard

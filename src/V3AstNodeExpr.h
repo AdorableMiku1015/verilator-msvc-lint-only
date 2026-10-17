@@ -2804,13 +2804,27 @@ public:
     int instrCount() const override { return widthInstrs(); }
 };
 class AstSysIgnore final : public AstNodeExpr {
-    // @astgen op1 := exprsp : List[AstNodeExpr] // Expressions to output (???)
+    // Ignored opaque calls, or expressions retained only for independent lint checks.
+    // @astgen op1 := exprsp : List[AstNode<AstNodeExpr|AstNodeDType>]
+    bool m_lintOnly = false;  // Preserve diagnostic operands until width and usage checks finish
+    bool m_readOnly = false;  // Expressions are known reads, not unknown-direction arguments
+
 public:
-    AstSysIgnore(FileLine* fl, AstNodeExpr* exprsp)
+    AstSysIgnore(FileLine* fl, AstNode* exprsp)
         : ASTGEN_SUPER_SysIgnore(fl) {
         addExprsp(exprsp);
     }
     ASTGEN_MEMBERS_AstSysIgnore;
+    void dump(std::ostream& str) const override;
+    void dumpJson(std::ostream& str) const override;
+    bool lintOnly() const { return m_lintOnly; }
+    void lintOnly(bool flag) { m_lintOnly = flag; }
+    bool readOnly() const { return m_readOnly; }
+    void readOnly(bool flag) { m_readOnly = flag; }
+    bool sameNode(const AstNode* samep) const override {
+        const AstSysIgnore* const sp = VN_DBG_AS(samep, SysIgnore);
+        return m_lintOnly == sp->m_lintOnly && m_readOnly == sp->m_readOnly;
+    }
     string verilogKwd() const override { return "$ignored"; }
     bool isGateOptimizable() const override { return false; }  // Though deleted before opt
     bool isPredictOptimizable() const override { return false; }  // Though deleted before opt

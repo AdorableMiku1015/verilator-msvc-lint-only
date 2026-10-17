@@ -9,7 +9,7 @@
 // still have to be reported in the same run.  The reference that cannot be
 // resolved is replaced by a stand-in value, and the assignments whose target
 // does not resolve are dropped, so the later passes can still walk the tree.
-// Any error that is not recoverable still stops those passes, which the mixed
+// A repaired width error must not stop those passes either, which the mixed
 // variant below checks.
 module t (
     input logic a,

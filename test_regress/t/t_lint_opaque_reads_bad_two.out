@@ -1,0 +1,34 @@
+%Error: t/t_lint_opaque_reads_bad.v:37:23: Can't find definition of task/function: 'absent_fn'
+   37 |   always_comb r = a ^ absent_fn(known(x), opaque_signal);
+      |                       ^~~~~~~~~
+        ... See the manual at https://verilator.org/verilator_doc.html?v=latest for more assistance.
+%Warning-MULTIDRIVEN: t/t_lint_opaque_reads_bad.v:41:15: Variable written to in always_comb also written by other process (IEEE 1800-2023 9.2.2.2): 'x'
+                                                       : ... note: In instance 't'
+                      t/t_lint_opaque_reads_bad.v:41:15: 
+   41 |   always_comb x = ~data;
+      |               ^
+                      t/t_lint_opaque_reads_bad.v:26:15: ... Location of other write
+   26 |   always_comb x = data;
+      |               ^
+                      ... For warning description see https://verilator.org/warn/MULTIDRIVEN?v=latest
+                      ... Use "/* verilator lint_off MULTIDRIVEN */" and lint_on around source to disable this message.
+%Warning-MULTIDRIVEN: t/t_lint_opaque_reads_bad.v:43:15: Variable written to in always_comb also written by other process (IEEE 1800-2023 9.2.2.2): 'opaque_signal'
+                                                       : ... note: In instance 't'
+                      t/t_lint_opaque_reads_bad.v:43:15: 
+   43 |   always_comb opaque_signal = ~data;
+      |               ^~~~~~~~~~~~~
+                      t/t_lint_opaque_reads_bad.v:28:15: ... Location of other write
+   28 |   always_comb opaque_signal = data;
+      |               ^~~~~~~~~~~~~
+%Warning-CASEINCOMPLETE: t/t_lint_opaque_reads_bad.v:49:5: Case values incompletely covered (example pattern 0x1)
+   49 |     case (a)
+      |     ^~~~
+                         ... For warning description see https://verilator.org/warn/CASEINCOMPLETE?v=latest
+                         ... Use "/* verilator lint_off CASEINCOMPLETE */" and lint_on around source to disable this message.
+%Warning-LATCH: t/t_lint_opaque_reads_bad.v:48:3: Latch inferred for signal 'b' (not all control paths of combinational always assign a value)
+                                                : ... Suggest use of always_latch for intentional latches
+   48 |   always_comb begin
+      |   ^~~~~~~~~~~
+                ... For warning description see https://verilator.org/warn/LATCH?v=latest
+                ... Use "/* verilator lint_off LATCH */" and lint_on around source to disable this message.
+%Error: Exiting due to

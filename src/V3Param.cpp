@@ -3886,10 +3886,10 @@ public:
         std::unordered_set<AstClass*> removedClassps;
         for (AstClass* const classp : m_state.m_paramClasses) {
             if (!classp->user3p()) {
-                // If there was an error, don't remove classes as they might
-                // have remained referenced, and  will crash in V3Broken or
-                // other locations. This is fine, we will abort imminently.
-                if (V3Error::errorCount()) continue;
+                // Unrecoverable errors may leave references to these classes;
+                // keep them until the imminent abort. Recoverable errors must
+                // not leave dead templates in the later lint passes.
+                if (V3Error::hasUnrecoverableErrors()) continue;
                 removedClassps.emplace(classp);
                 VL_DO_DANGLING(pushDeletep(classp->unlinkFrBack()), classp);
             } else {

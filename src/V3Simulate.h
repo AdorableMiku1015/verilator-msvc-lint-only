@@ -1043,8 +1043,16 @@ private:
 
     void visit(AstStmtExpr* nodep) override {
         if (jumpingOver()) return;
+        if (const AstSysIgnore* const ignorep = VN_CAST(nodep->exprp(), SysIgnore)) {
+            // Retained lint operands have no execution or constant-evaluation
+            // semantics. Width and usage analysis check them separately.
+            if (ignorep->lintOnly()) return;
+        }
         checkNodeInfo(nodep);
         iterateChildrenConst(nodep);
+    }
+    void visit(AstSysIgnore* nodep) override {
+        if (!nodep->lintOnly()) badNodeType(nodep);
     }
     void visit(AstExprStmt* nodep) override {
         if (jumpingOver()) return;

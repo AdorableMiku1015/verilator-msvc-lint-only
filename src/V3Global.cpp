@@ -75,6 +75,73 @@ void V3Global::vlExit(int status) {
 
 void V3Global::checkTree() const { rootp()->checkTree(); }
 
+V3Global::ParseState V3Global::parseState() const {
+    return {m_assertDTypesResolved,
+            m_assertScoped,
+            m_assignsEvents,
+            m_constRemoveXs,
+            m_needTraceDumper,
+            m_dpi,
+            m_hasEvents,
+            m_hasClasses,
+            m_hasSampled,
+            m_hasTable,
+            m_hasVirtIfaces,
+            m_usesProbDist,
+            m_usesStdPackage,
+            m_usesTiming,
+            m_usesForce,
+            m_usesZeroDelay,
+            m_hasForceableSignals,
+            m_hasAssignDeassign,
+            m_hasSystemCSections,
+            m_useParallelBuild,
+            m_useRandSequence,
+            m_useCovergroup,
+            m_useRandomizeMethods,
+            m_hasPrintedObjects};
+}
+
+void V3Global::parseState(const ParseState& state) {
+    m_assertDTypesResolved = state.assertDTypesResolved;
+    m_assertScoped = state.assertScoped;
+    m_assignsEvents = state.assignsEvents;
+    m_constRemoveXs = state.constRemoveXs;
+    m_needTraceDumper = state.needTraceDumper;
+    m_dpi = state.dpi;
+    m_hasEvents = state.hasEvents;
+    m_hasClasses = state.hasClasses;
+    m_hasSampled = state.hasSampled;
+    m_hasTable = state.hasTable;
+    m_hasVirtIfaces = state.hasVirtIfaces;
+    m_usesProbDist = state.usesProbDist;
+    m_usesStdPackage = state.usesStdPackage;
+    m_usesTiming = state.usesTiming;
+    m_usesForce = state.usesForce;
+    m_usesZeroDelay = state.usesZeroDelay;
+    m_hasForceableSignals = state.hasForceableSignals;
+    m_hasAssignDeassign = state.hasAssignDeassign;
+    m_hasSystemCSections = state.hasSystemCSections;
+    m_useParallelBuild = state.useParallelBuild;
+    m_useRandSequence = state.useRandSequence;
+    m_useCovergroup = state.useCovergroup;
+    m_useRandomizeMethods = state.useRandomizeMethods;
+    m_hasPrintedObjects = state.hasPrintedObjects;
+}
+
+void V3Global::noteQuarantinedModule(const string& name, const string& libname, FileLine* flp) {
+    const auto inserted = m_quarantinedModules.emplace(std::make_pair(libname, name), nullptr);
+    if (!inserted.second) return;
+    FileLine* const errorp = new FileLine{flp};
+    errorp->erroringOn(true);
+    inserted.first->second = errorp;
+}
+
+FileLine* V3Global::quarantinedModuleFileline(const string& name, const string& libname) const {
+    const auto it = m_quarantinedModules.find({libname, name});
+    return it == m_quarantinedModules.end() ? nullptr : it->second;
+}
+
 void V3Global::readFiles() {
     // NODE STATE
     //   AstNode::user4p()      // VSymEnt*    Package and typedef symbol names
@@ -138,7 +205,30 @@ void V3Global::readFiles() {
     }
 
     // v3Global.rootp()->dumpTreeFile(v3Global.debugFilename("parse.tree"));
-    V3Error::abortIfErrors();
+    V3Error::abortIfUnrecoverableErrors();
+
+    if (quarantinedSources()) {
+        // Package-only and compilation-unit functions/classes are lintable too.
+        bool hasRetainedInput = rootp()->dollarUnitPkgp()->stmtsp();
+        bool hasRequestedTop = opt.topModule().empty();
+        for (AstNodeModule* modp = rootp()->modulesp(); modp;
+             modp = VN_AS(modp->nextp(), NodeModule)) {
+            if (!VN_IS(modp, NotFoundModule) && !modp->isDollarUnit() && !modp->isConstPool()
+                && modp != rootp()->stdPackagep()) {
+                hasRetainedInput = true;
+            }
+            if ((VN_IS(modp, Module) || VN_IS(modp, Iface) || VN_IS(modp, Primitive))
+                && modp->name() == opt.topModule()) {
+                hasRequestedTop = true;
+            }
+        }
+        // Only a truly empty user tree should stop with the original errors.
+        if (!hasRetainedInput) V3Error::abortIfErrors();
+        // The requested top may have been in a rejected input. Its syntax error
+        // still makes this run fail; lint the remaining independent roots rather
+        // than selecting an unavailable placeholder or dropping healthy modules.
+        if (!hasRequestedTop) opt.clearTopModule();
+    }
 
     if (!v3Global.opt.preprocOnly() || v3Global.opt.preprocResolve()) {
         // Resolve all modules cells refer to

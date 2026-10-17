@@ -31,6 +31,7 @@
 #include "V3Mutex.h"
 #include "V3Options.h"
 
+#include <map>
 #include <string>
 #include <thread>
 #include <type_traits>
@@ -199,6 +200,9 @@ class V3Global final {
     bool m_useCovergroup = false;  // Has covergroup declarations
     bool m_useRandomizeMethods = false;  // Need to define randomize() class methods
     bool m_hasPrintedObjects = false;  // Design has format args printed with to_string()
+    bool m_quarantinedSources = false;  // At least one failed parse was removed from the design
+    // Rejected declaration identities, separate from real module definitions.
+    std::map<std::pair<string, string>, FileLine*> m_quarantinedModules;
     uint64_t m_currentHierBlockCost = 0;  // Total cost of this hier block, used for scheduling
 
     // Memory address to short string mapping (for debug)
@@ -212,6 +216,35 @@ class V3Global final {
     const std::thread::id m_mainThreadId = std::this_thread::get_id();
 
 public:
+    // Semantic feature flags can be set by constructors before a design unit
+    // finishes parsing. Restore them together when that input is quarantined.
+    struct ParseState final {
+        bool assertDTypesResolved;
+        bool assertScoped;
+        bool assignsEvents;
+        bool constRemoveXs;
+        bool needTraceDumper;
+        bool dpi;
+        bool hasEvents;
+        bool hasClasses;
+        bool hasSampled;
+        bool hasTable;
+        bool hasVirtIfaces;
+        bool usesProbDist;
+        bool usesStdPackage;
+        bool usesTiming;
+        bool usesForce;
+        bool usesZeroDelay;
+        bool hasForceableSignals;
+        bool hasAssignDeassign;
+        bool hasSystemCSections;
+        bool useParallelBuild;
+        bool useRandSequence;
+        bool useCovergroup;
+        bool useRandomizeMethods;
+        bool hasPrintedObjects;
+    };
+
     // Options
     V3Options opt;  // All options; let user see them directly
 
@@ -237,6 +270,12 @@ public:
     bool assertScoped() const { return m_assertScoped; }
 
     // METHODS
+    ParseState parseState() const VL_MT_DISABLED;
+    void parseState(const ParseState& state) VL_MT_DISABLED;
+    void noteQuarantinedSource() { m_quarantinedSources = true; }
+    bool quarantinedSources() const { return m_quarantinedSources; }
+    void noteQuarantinedModule(const string& name, const string& libname, FileLine* flp);
+    FileLine* quarantinedModuleFileline(const string& name, const string& libname) const;
     void readFiles() VL_MT_DISABLED;
     void removeStd() VL_MT_DISABLED;
     void checkTree() const;

@@ -1,0 +1,17 @@
+%Error-ENUMITEMWIDTH: t/t_lint_width_error_bad.v:23:41: Enum value exceeds width of enum type (IEEE 1800-2023 6.19)
+                                                      : ... note: In instance 't'
+   23 |   typedef enum logic [1:0] { TOO_WIDE = 3'b100 } state_t;
+      |                                         ^~~~~~
+                      ... For error description see https://verilator.org/warn/ENUMITEMWIDTH?v=latest
+%Warning-CASEINCOMPLETE: t/t_lint_width_error_bad.v:15:5: Case values incompletely covered (example pattern 0x1)
+   15 |     case (a)
+      |     ^~~~
+                         ... For warning description see https://verilator.org/warn/CASEINCOMPLETE?v=latest
+                         ... Use "/* verilator lint_off CASEINCOMPLETE */" and lint_on around source to disable this message.
+%Warning-LATCH: t/t_lint_width_error_bad.v:14:3: Latch inferred for signal 'b' (not all control paths of combinational always assign a value)
+                                               : ... Suggest use of always_latch for intentional latches
+   14 |   always_comb begin
+      |   ^~~~~~~~~~~
+                ... For warning description see https://verilator.org/warn/LATCH?v=latest
+                ... Use "/* verilator lint_off LATCH */" and lint_on around source to disable this message.
+%Error: Exiting due to

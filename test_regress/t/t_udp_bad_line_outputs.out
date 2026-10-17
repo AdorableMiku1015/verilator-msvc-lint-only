@@ -5,5 +5,4 @@
 %Error: t/t_udp_bad_line_outputs.v:15:15: syntax error, unexpected UDP table field, expecting UDP table line end
    15 |     ? : 0 : 0 0;   
       |               ^
-%Error: Cannot continue
-        ... This fatal error may be caused by the earlier error(s); resolve those first.
+%Error: Exiting due to

@@ -3304,6 +3304,16 @@ void AstStrengthSpec::dumpJson(std::ostream& str) const {
     dumpJsonStr(str, "strength1", m_s1.ascii());
     dumpJsonGen(str);
 }
+void AstSysIgnore::dump(std::ostream& str) const {
+    Super::dump(str);
+    if (lintOnly()) str << " [LINTONLY]";
+    if (readOnly()) str << " [READONLY]";
+}
+void AstSysIgnore::dumpJson(std::ostream& str) const {
+    dumpJsonBoolFuncIf(str, lintOnly);
+    dumpJsonBoolFuncIf(str, readOnly);
+    dumpJsonGen(str);
+}
 void AstSystemCSection::dump(std::ostream& str) const {
     Super::dump(str);
     str << " sectionType=" << sectionType().ascii();

@@ -161,7 +161,7 @@ static void UNSUPREAL(FileLine* fileline) {
 
 //======================================================================
 
-void yyerror(const char* errmsg) { PARSEP->bisonLastFileline()->v3error(errmsg); }
+void yyerror(const char* errmsg) { PARSEP->syntaxError(errmsg); }
 
 template <typename T_Node, typename T_Next>
 static T_Node* addNextNull(T_Node* nodep, T_Next* nextp) {

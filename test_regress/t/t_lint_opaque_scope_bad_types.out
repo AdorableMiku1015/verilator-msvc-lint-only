@@ -1,0 +1,33 @@
+%Error-MODMISSING: t/t_lint_opaque_scope_bad.v:83:3: Cannot find file containing module: 'absent_ip'
+   83 |   absent_ip #(
+      |   ^~~~~~~~~
+                   ... For error description see https://verilator.org/warn/MODMISSING?v=latest
+                   ... Looked in:
+                        t/absent_ip
+                        t/absent_ip.v
+                        t/absent_ip.sv
+                        absent_ip
+                        absent_ip.v
+                        absent_ip.sv
+                        obj_vlt/t_lint_opaque_scope_bad/absent_ip
+                        obj_vlt/t_lint_opaque_scope_bad/absent_ip.v
+                        obj_vlt/t_lint_opaque_scope_bad/absent_ip.sv
+                   ... With current working directory '...'
+%Warning-SELRANGE: t/t_lint_opaque_scope_bad.v:90:23: Selection index out of range: 20:20 outside 6:0
+                                                    : ... note: In instance 't'
+   90 |       .bad_select(data[20])
+      |                       ^
+                   ... For warning description see https://verilator.org/warn/SELRANGE?v=latest
+                   ... Use "/* verilator lint_off SELRANGE */" and lint_on around source to disable this message.
+%Warning-CASEINCOMPLETE: t/t_lint_opaque_scope_bad.v:16:5: Case values incompletely covered (example pattern 0x1)
+   16 |     case (a)
+      |     ^~~~
+                         ... For warning description see https://verilator.org/warn/CASEINCOMPLETE?v=latest
+                         ... Use "/* verilator lint_off CASEINCOMPLETE */" and lint_on around source to disable this message.
+%Warning-LATCH: t/t_lint_opaque_scope_bad.v:15:3: Latch inferred for signal 'b' (not all control paths of combinational always assign a value)
+                                                : ... Suggest use of always_latch for intentional latches
+   15 |   always_comb begin
+      |   ^~~~~~~~~~~
+                ... For warning description see https://verilator.org/warn/LATCH?v=latest
+                ... Use "/* verilator lint_off LATCH */" and lint_on around source to disable this message.
+%Error: Exiting due to

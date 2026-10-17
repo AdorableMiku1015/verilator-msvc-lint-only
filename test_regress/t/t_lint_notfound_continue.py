@@ -13,8 +13,8 @@ test.scenarios('vlt')
 
 # Names that do not resolve only: the later case/latch checks still run.
 test.lint(fails=True, expect_filename=test.golden_filename)
-# Those names plus an error that is not recoverable: the later checks are
-# skipped again, so no case/latch warning may appear.
+# Those names plus a repaired width error: the later case/latch checks
+# must still run.
 test.lint(v_flags2=['+define+T_LINT_NOTFOUND_CONTINUE_MIXED'],
           fails=True,
           expect_filename='t/t_lint_notfound_continue_mixed.out')

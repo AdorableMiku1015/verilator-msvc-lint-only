@@ -259,6 +259,7 @@ class WidthVisitor final : public VNVisitor {
     using DTypeMap = std::map<const std::string, AstPatMember*>;
 
     // STATE
+    V3UniqueNames m_callTargetNames;  // Private targets for unresolved writable actuals
     V3UniqueNames m_enumTempNames;  // Captured enum expressions
     V3UniqueNames m_insideTempNames;  // For generating unique temporary variable names for
                                       // `inside` expressions
@@ -284,6 +285,7 @@ class WidthVisitor final : public VNVisitor {
     const AstNodeExpr* m_randomizeFromp = nullptr;  // Current randomize method call fromp
     const bool m_paramsOnly;  // Computing parameter value; limit operation
     const bool m_doGenerate;  // Do errors later inside generate statement
+    bool m_inLintOperand = false;  // Recovery operands need checks before index truncation
     bool m_streamConcat = false;  // True if visiting arguments of stream concatenation
     // Created dimension and enum tables, mapped to a reference reading the table (always cloned)
     std::map<std::pair<const AstNodeDType*, VAttrType>, AstVarRef*> m_tableMap;
@@ -998,8 +1000,8 @@ class WidthVisitor final : public VNVisitor {
                 if (!constp) nodep->v3error("Replication value isn't a constant.");
                 if (times == 0
                     && !VN_IS(nodep->backp(), Concat)) {  // Concat Visitor will clean it up.
-                    nodep->v3warn(ZEROREPL,
-                                  "Replication value of 0 is only legal under a concatenation"
+                    nodep->v3warnRecoverable(
+                        ZEROREPL, "Replication value of 0 is only legal under a concatenation"
                                   " (IEEE 1800-2023 11.4.12.1)");
                     times = 1;  // Set to 1, so we can continue looking for errors
                 }
@@ -1226,6 +1228,9 @@ class WidthVisitor final : public VNVisitor {
                 = nodep->findLogicDType(selwidth, selwidth, nodep->lsbp()->dtypep()->numeric());
             userIterateAndNext(nodep->fromp(), WidthVP{SELF, FINAL}.p());
             userIterateAndNext(nodep->lsbp(), WidthVP{SELF, FINAL}.p());
+            // Retained operands bypass earlier constant passes. Fold a known
+            // index before truncating it, or 0+20 would silently become 4.
+            if (m_inLintOperand) V3Const::constifyEdit(nodep->lsbp());
             if (widthBad(nodep->lsbp(), selwidthDTypep) && nodep->lsbp()->width() != 32) {
                 if (!nodep->fileline()->warnIsOff(V3ErrorCode::WIDTH)) {
                     nodep->v3widthWarn(
@@ -1301,6 +1306,7 @@ class WidthVisitor final : public VNVisitor {
         assertAtExpr(nodep);
         if (m_vup->prelim()) {
             iterateCheckSizedSelf(nodep, "Bit select", nodep->bitp(), SELF, BOTH);
+            if (m_inLintOperand) V3Const::constifyEdit(nodep->bitp());
             userIterateAndNext(nodep->fromp(), WidthVP{SELF, BOTH}.p());
             // Element of a whole array of interfaces
             if (VN_IS(nodep->fromp(), InitArray) && isIfaceArrayDType(nodep->fromp()->dtypep())) {
@@ -3579,8 +3585,9 @@ class WidthVisitor final : public VNVisitor {
             }
             if (const AstConst* const constp = VN_CAST(valuep, Const)) {
                 if (static_cast<int>(constp->num().mostSetBitP1()) > nodep->width()) {
-                    constp->v3warn(ENUMITEMWIDTH,
-                                   "Enum value exceeds width of enum type (IEEE 1800-2023 6.19)");
+                    constp->v3warnRecoverable(
+                        ENUMITEMWIDTH,
+                        "Enum value exceeds width of enum type (IEEE 1800-2023 6.19)");
                     warnOn = false;  // Prevent normal WIDTHTRUNC
                 }
             }
@@ -7148,7 +7155,23 @@ class WidthVisitor final : public VNVisitor {
     }
     void visit(AstStackTraceF* nodep) override { nodep->dtypeSetString(); }
     void visit(AstSysIgnore* nodep) override {
-        userIterateAndNext(nodep->exprsp(), WidthVP{SELF, BOTH}.p());
+        VL_RESTORER(m_inLintOperand);
+        m_inLintOperand = m_inLintOperand || nodep->lintOnly();
+        for (AstNode *argp = nodep->exprsp(), *nextp; argp; argp = nextp) {
+            nextp = argp->nextp();
+            if (AstNodeDType* const dtypep = VN_CAST(argp, NodeDType)) {
+                // Use ordinary child-dtype normalization to move shared types
+                // into the type table before this diagnostic-only carrier dies.
+                // The unlinked typedef is not a declaration in any user scope.
+                AstTypedef* const carrierp
+                    = new AstTypedef{dtypep->fileline(), "__VlintOperandType", nullptr,
+                                     VFlagChildDType{}, dtypep->unlinkFrBack()};
+                userIterate(carrierp, nullptr);
+                pushDeletep(carrierp);
+            } else {
+                userIterate(argp, WidthVP{SELF, BOTH}.p());
+            }
+        }
     }
     void visit(AstSystemF* nodep) override {
         assertAtExpr(nodep);
@@ -7496,7 +7519,8 @@ class WidthVisitor final : public VNVisitor {
         VL_RESTORER(m_cellp);
         m_cellp = nodep;
         if (!m_paramsOnly) {
-            if (VN_IS(nodep->modp(), NotFoundModule)) {
+            if (VN_IS(nodep->modp(), NotFoundModule) && !nodep->modp()->fileline()->erroringOn()) {
+                // A quarantined source already has a precise syntax diagnostic.
                 // We've resolved parameters and hit a module that we couldn't resolve.  It's
                 // finally time to report it.
                 // Note only here in V3Width as this is first visitor after V3Dead.
@@ -7819,6 +7843,40 @@ class WidthVisitor final : public VNVisitor {
             }
         }
     }
+    AstNodeExpr* repairFTaskTarget(AstNodeExpr* pinp, const AstVar* portp) {
+        if (!portp->isWritable() && !portp->isConstRef()) return pinp;
+        AstConst* const constp = VN_CAST(pinp, Const);
+        if (!constp || !constp->fileline()->erroringOn()) return pinp;
+        // An unresolved name became a recovery constant, not a user-written
+        // constant actual. The known formal supplies its target's exact type
+        // before width checking or lowering can treat it as a constant lvalue.
+        FileLine* const flp = constp->fileline();
+        flp->warnOff(V3ErrorCode::UNDRIVEN, true);
+        flp->warnOff(V3ErrorCode::UNUSEDSIGNAL, true);
+        AstNodeModule* const ownerp = m_modep ? m_modep : v3Global.rootp()->dollarUnitPkgp();
+        string name = m_callTargetNames.get(constp);
+        if (!m_ftaskp && VN_IS(ownerp, Package)) {
+            // Distinct class/parameter visitors can share the $unit fallback.
+            // Reserve against its actual members, not a restored local counter.
+            while (m_memberMap.findMember(ownerp, name)) name = m_callTargetNames.get(constp);
+        }
+        AstVar* const varp = new AstVar{flp, VVarType::XTEMP, name, portp->dtypep()};
+        varp->noSubst(true);
+        if (m_ftaskp) {
+            varp->funcLocal(true);
+            varp->lifetime(VLifetime::AUTOMATIC_EXPLICIT);
+            m_ftaskp->stmtsp()->addHereThisAsNext(varp);
+        } else {
+            // Detached parameter checks may not have entered a module visitor.
+            ownerp->addStmtsp(varp);
+            if (VN_IS(ownerp, Package)) m_memberMap.insert(ownerp, varp);
+        }
+        iterate(varp);
+        AstVarRef* const refp = new AstVarRef{flp, varp, portp->direction().pinAccess()};
+        constp->replaceWith(refp);
+        VL_DO_DANGLING(pushDeletep(constp), constp);
+        return refp;
+    }
     void processFTaskRefArgs(AstNodeFTaskRef* nodep) {
         // For arguments, is assignment-like context; see IEEE rules in AstNodeAssign
         // Function hasn't been widthed, so make it so.
@@ -7839,6 +7897,7 @@ class WidthVisitor final : public VNVisitor {
                 AstArg* const argp = tconnect.second;
                 AstNodeExpr* pinp = argp->exprp();
                 if (!pinp) continue;  // Argument error we'll find later
+                pinp = repairFTaskTarget(pinp, portp);
                 // Prelim may cause the node to get replaced; we've lost our
                 // pointer, so need to iterate separately later
                 if (portp->attrSFormat()
@@ -8361,6 +8420,7 @@ class WidthVisitor final : public VNVisitor {
     }
     void visit(AstNodeModule* nodep) override {
         assertAtStatement(nodep);
+        VL_RESTORER_COPY(m_callTargetNames);
         VL_RESTORER_COPY(m_enumTempNames);
         VL_RESTORER_COPY(m_insideTempNames);
         if (AstClass* const classp = VN_CAST(nodep, Class)) {
@@ -9760,8 +9820,8 @@ class WidthVisitor final : public VNVisitor {
                         && castable != VCastable::ENUM_IMPLICIT && !VN_IS(underp, Cast)
                         && !VN_IS(underp, CastDynamic) && !m_enumItemp
                         && !parentp->fileline()->warnIsOff(V3ErrorCode::ENUMVALUE) && warnOn) {
-                        underp->v3warn(ENUMVALUE,
-                                       "Implicit conversion to enum "
+                        underp->v3warnRecoverable(
+                            ENUMVALUE, "Implicit conversion to enum "
                                            << expDTypep->prettyDTypeNameQ() << " from "
                                            << underp->dtypep()->prettyDTypeNameQ()
                                            << " (IEEE 1800-2023 6.19.3)\n"
@@ -10943,7 +11003,8 @@ public:
     WidthVisitor(bool paramsOnly,  // [in] TRUE if we are considering parameters only.
                  bool doGenerate)  // [in] TRUE if we are inside a generate statement and
         //                           // don't wish to trigger errors
-        : m_enumTempNames{"__Venum"}
+        : m_callTargetNames{"__VlintCallTarget"}
+        , m_enumTempNames{"__Venum"}
         , m_insideTempNames{"__VInside"}
         , m_paramsOnly{paramsOnly}
         , m_doGenerate{doGenerate} {}

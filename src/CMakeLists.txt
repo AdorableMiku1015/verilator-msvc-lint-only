@@ -316,9 +316,18 @@ string(REPLACE "\r" "" VL_STD_WAIVER_TEXT "${VL_STD_WAIVER_TEXT}")
 configure_file(V3StdEmbedded.h.in V3StdEmbedded.h @ONLY NEWLINE_STYLE LF)
 list(APPEND GENERATED_FILES V3StdEmbedded.h)
 
+set(
+    AST_DEFINITION_HEADERS
+    "${srcdir}/V3AstNodeDType.h"
+    "${srcdir}/V3AstNodeExpr.h"
+    "${srcdir}/V3AstNodeOther.h"
+    "${srcdir}/V3AstNodeStmt.h"
+    "${srcdir}/V3DfgVertices.h"
+)
+
 add_custom_command(
     OUTPUT V3Ast__gen_forward_class_decls.h V3Dfg__gen_forward_class_decls.h
-    DEPENDS ./V3Ast.h ${ASTGEN}
+    DEPENDS ./V3Ast.h ${ASTGEN} ${AST_DEFINITION_HEADERS}
     COMMAND ${PYTHON3}
     ARGS
         ${ASTGEN} -I "${srcdir}" --astdef V3AstNodeDType.h --astdef
@@ -430,7 +439,7 @@ foreach(astgen_name ${ASTGENERATED_NAMES})
     add_custom_command(
         OUTPUT ${astgen_name}__gen.cpp
         MAIN_DEPENDENCY ${astgen_name}.cpp
-        DEPENDS ${ASTGEN} V3Ast.h
+        DEPENDS ${ASTGEN} V3Ast.h ${AST_DEFINITION_HEADERS}
         COMMAND ${PYTHON3}
         ARGS
             ${ASTGEN} -I "${srcdir}" --astdef V3AstNodeDType.h --astdef

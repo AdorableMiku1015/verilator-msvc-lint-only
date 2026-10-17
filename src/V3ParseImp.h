@@ -157,6 +157,9 @@ class V3ParseImp final {
     FileLine* m_lexFileline = nullptr;  // Filename/linenumber currently active for lexing
 
     FileLine* m_bisonLastFileline = nullptr;  // Filename/linenumber of last token
+    bool m_canRecoverSyntax = false;  // External source has an AST rollback checkpoint
+    bool m_syntaxError = false;  // Bison reported an error, including accepted recovery
+    bool m_sourceQuarantined = false;  // This input was rolled back after a syntax error
 
     bool m_inLibrary = false;  // Currently reading a library vs. regular file
     bool m_inLibMap = false;  // Currently reading a libmap file
@@ -271,6 +274,7 @@ public:
     // Bison sometimes needs error context without a token, so remember last token's line
     // Only use this if do not have and cannot get a token-relevant fileline
     FileLine* bisonLastFileline() const { return m_bisonLastFileline; }
+    void syntaxError(const char* messagep) VL_MT_DISABLED;
 
     // Return next token, for bison, since bison isn't class based, use a global THIS
     AstNetlist* rootp() const { return m_rootp; }
@@ -303,6 +307,7 @@ public:
     }
     ~V3ParseImp() VL_MT_DISABLED;
     void parserClear() VL_MT_DISABLED;
+    void parserReset() VL_MT_DISABLED;
     void lexUnputString(const char* textp, size_t length) VL_MT_DISABLED;
 
     // METHODS

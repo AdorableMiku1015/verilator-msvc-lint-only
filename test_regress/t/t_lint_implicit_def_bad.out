@@ -7,4 +7,32 @@
    18 |   assign imp_err = 1'b1;
       |          ^~~~~~~
         ... See the manual at https://verilator.org/verilator_doc.html?v=latest for more assistance.
+%Warning-UNUSEDSIGNAL: t/t_lint_implicit_def_bad.v:8:9: Signal is not used: 'a'
+                                                      : ... note: In instance 't'
+    8 |   input a;
+      |         ^
+                       ... For warning description see https://verilator.org/warn/UNUSEDSIGNAL?v=latest
+                       ... Use "/* verilator lint_off UNUSEDSIGNAL */" and lint_on around source to disable this message.
+%Warning-UNDRIVEN: t/t_lint_implicit_def_bad.v:9:10: Signal is not driven: 'z'
+                                                   : ... note: In instance 't'
+    9 |   output z;
+      |          ^
+                   ... For warning description see https://verilator.org/warn/UNDRIVEN?v=latest
+                   ... Use "/* verilator lint_off UNDRIVEN */" and lint_on around source to disable this message.
+%Warning-UNUSEDSIGNAL: t/t_lint_implicit_def_bad.v:13:10: Signal is not used: 'imp_warn'
+                                                        : ... note: In instance 't'
+   13 |   assign imp_warn = 1'b1;
+      |          ^~~~~~~~
+%Warning-UNUSEDSIGNAL: t/t_lint_implicit_def_bad.v:15:10: Signal is not used: 'imp_ok'
+                                                        : ... note: In instance 't'
+   15 |   assign imp_ok = 1'b1;
+      |          ^~~~~~
+%Warning-UNUSEDSIGNAL: t/t_lint_implicit_def_bad.v:21:10: Signal is not used: 'imp_ok2'
+                                                        : ... note: In instance 't'
+   21 |   assign imp_ok2 = 1'b1;
+      |          ^~~~~~~
+%Warning-UNUSEDSIGNAL: t/t_lint_implicit_def_bad.v:27:10: Signal is not used: 'imp_ok3'
+                                                        : ... note: In instance 't.sub'
+   27 |   assign imp_ok3 = 1'b1;
+      |          ^~~~~~~
 %Error: Exiting due to

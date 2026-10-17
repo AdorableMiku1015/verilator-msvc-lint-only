@@ -6,8 +6,8 @@
 
 // An unknown module is reported as an error by the width pass, but that error
 // must not stop the later lint passes: the case and latch checks run after it,
-// so their warnings still have to be reported in the same run.  Any other
-// error still stops those passes, which the mixed variant below checks.
+// so their warnings still have to be reported in the same run. A repaired
+// width error must not stop them either, as the mixed variant checks.
 module t (
     input logic a,
     output logic b

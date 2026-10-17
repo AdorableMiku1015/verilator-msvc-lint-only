@@ -121,6 +121,51 @@ static string targetInstancePath(AstNode* const targetp, const string& targetPat
     return targetPath.substr(0, targetPath.size() - suffix.size());
 }
 
+//######################################################################
+// Keep independently checkable caller operands when their destination is unknown.
+// They are statements, never fake assignments or constant-expression children.
+// Width checks them with SELF sizing; Undriven records the appropriate usage;
+// the pipeline removes them before executable lowering.
+
+class LinkDotLint final {
+public:
+    static AstStmtExpr* newOperands(FileLine* flp, AstNode* operandsp, bool readOnly) {
+        if (!operandsp) return nullptr;
+        AstSysIgnore* const ignorep = new AstSysIgnore{flp, operandsp};
+        ignorep->readOnly(readOnly);
+        ignorep->lintOnly(true);
+        ignorep->dtypeSetVoid();
+        return ignorep->makeStmt();
+    }
+    static AstNode* takeArgs(AstNodeFTaskRef* nodep) {
+        AstNode* operandsp = nullptr;
+        for (AstArg* argp = nodep->argsp(); argp; argp = VN_AS(argp->nextp(), Arg)) {
+            if (argp->exprp())
+                operandsp = AstNode::addNext(operandsp, argp->exprp()->unlinkFrBack());
+        }
+        return operandsp;
+    }
+};
+
+class LinkDotTakeCallArgsVisitor final : public VNVisitor {
+    AstNode* m_operandsp = nullptr;  // Actuals whose failed dot would otherwise discard them
+    void visit(AstNodeFTaskRef* nodep) override {
+        if (nodep->taskp()) {
+            // A resolved prefix call still has independently checkable formals.
+            m_operandsp = AstNode::addNext(m_operandsp, nodep->cloneTree(false));
+        } else {
+            m_operandsp = AstNode::addNextNull(m_operandsp, LinkDotLint::takeArgs(nodep));
+            // Moved nested calls are linked in their original caller context.
+            iterateChildren(nodep);
+        }
+    }
+    void visit(AstNode* nodep) override { iterateChildren(nodep); }
+
+public:
+    explicit LinkDotTakeCallArgsVisitor(AstNode* nodep) { iterate(nodep); }
+    AstNode* operandsp() const { return m_operandsp; }
+};
+
 // ######################################################################
 //  Matcher classes (for suggestion matching)
 
@@ -3238,6 +3283,7 @@ class LinkDotResolveVisitor final : public VNVisitor {
         bool m_unresolvedGenericIface;  // Unresolved generic interface, needs help from V3Param
         bool m_genBlk;  // Contains gen block reference
         AstNode* m_unlinkedScopep;  // Unresolved scope, needs corresponding VarXRef
+        AstNode* m_lintArgsp;  // Actual operands detached from a failed dot chain
         AstDisable* m_disablep;  // Disable statement under which the reference is
         bool m_dotErr;  // Error found in dotted resolution, ignore upwards
         string m_dotText;  // String of dotted names found in below parseref
@@ -3255,6 +3301,7 @@ class LinkDotResolveVisitor final : public VNVisitor {
             m_unresolvedGenericIface = false;
             m_genBlk = false;
             m_unlinkedScopep = nullptr;
+            m_lintArgsp = nullptr;
             m_disablep = nullptr;
         }
         string ascii() const {
@@ -3285,10 +3332,12 @@ class LinkDotResolveVisitor final : public VNVisitor {
             if (nodep->fileline()->warnIsOff(V3ErrorCode::I_DEF_NETTYPE_WIRE)) {
                 const string suggest = m_statep->suggestSymFallback(moduleSymp, nodep->name(),
                                                                     LinkNodeMatcherVar{});
-                nodep->v3error("Signal definition not found, and implicit disabled with "
-                               "`default_nettype: "
-                               << nodep->prettyNameQ() << '\n'
-                               << (suggest.empty() ? "" : nodep->warnMore() + suggest));
+                nodep->v3errorRecoverable(
+                    "Signal definition not found, and implicit disabled with "
+                    "`default_nettype: "
+                    << nodep->prettyNameQ() << '\n'
+                    << (suggest.empty() ? "" : nodep->warnMore() + suggest));
+                V3LinkDot::markUnresolved(nodep);
 
             }
             // Bypass looking for suggestions if IMPLICIT is turned off
@@ -3302,8 +3351,14 @@ class LinkDotResolveVisitor final : public VNVisitor {
                                   << (suggest.empty() ? "" : nodep->warnMore() + suggest));
             }
         }
-        AstVar* const newp
-            = new AstVar{nodep->fileline(), VVarType::WIRE, nodep->name(), VFlagLogicPacked{}, 1};
+        FileLine* flp = nodep->fileline();
+        if (nodep->unresolved()) {
+            flp = new FileLine{flp};
+            flp->erroringOn(true);
+            flp->warnOff(V3ErrorCode::UNDRIVEN, true);
+            flp->warnOff(V3ErrorCode::UNUSEDSIGNAL, true);
+        }
+        AstVar* const newp = new AstVar{flp, VVarType::WIRE, nodep->name(), VFlagLogicPacked{}, 1};
         newp->lifetime(VLifetime::STATIC_IMPLICIT);
         newp->trace(modp->modTrace());
         modp->addStmtsp(newp);
@@ -3316,8 +3371,14 @@ class LinkDotResolveVisitor final : public VNVisitor {
         // Return a variable if possible, auto converting a modport to variable
         if (!symp) {
             return nullptr;
-        } else if (VN_IS(symp->nodep(), Var)) {
-            return VN_AS(symp->nodep(), Var);
+        } else if (AstVar* const varp = VN_CAST(symp->nodep(), Var)) {
+            if (varp->isNet() && varp->lifetime() == VLifetime::STATIC_IMPLICIT
+                && varp->fileline()->erroringOn()) {
+                // Reusing an error-created implicit declaration does not make a
+                // later reference real. Preserve the exact hole without re-reporting it.
+                V3LinkDot::markUnresolved(nodep);
+            }
+            return varp;
         } else if (VN_IS(symp->nodep(), ModportVarRef)) {
             AstModportVarRef* const snodep = VN_AS(symp->nodep(), ModportVarRef);
             AstVar* const varp = snodep->varp();
@@ -3910,9 +3971,24 @@ class LinkDotResolveVisitor final : public VNVisitor {
         {
             m_cellp = nodep;
             if (VN_IS(nodep->modp(), NotFoundModule)) {
-                // Prevent warnings about missing pin connects
-                if (nodep->pinsp()) nodep->pinsp()->unlinkFrBackWithNext()->deleteTree();
-                if (nodep->paramsp()) nodep->paramsp()->unlinkFrBackWithNext()->deleteTree();
+                // Formal names, widths and directions are unavailable. Keep the
+                // actual operands in caller scope without inventing an interface.
+                const auto retainPins = [&](AstPin* pinsp, bool readOnly) {
+                    AstNode* operandsp = nullptr;
+                    for (AstPin* pinp = pinsp; pinp; pinp = VN_AS(pinp->nextp(), Pin)) {
+                        if (pinp->exprp()) {
+                            operandsp = AstNode::addNext(operandsp, pinp->exprp()->unlinkFrBack());
+                        }
+                    }
+                    if (AstStmtExpr* const stmtp
+                        = LinkDotLint::newOperands(nodep->fileline(), operandsp, readOnly)) {
+                        nodep->addNextHere(stmtp);
+                        symIterateNull(stmtp, m_curSymp);
+                    }
+                    if (pinsp) VL_DO_DANGLING(pushDeletep(pinsp->unlinkFrBackWithNext()), pinsp);
+                };
+                retainPins(nodep->paramsp(), true);
+                retainPins(nodep->pinsp(), false);
             }
             // Need to pass the module info to this cell, so we can link up the pin names
             // However can't use m_curSymp as pin connections need to use the
@@ -4177,17 +4253,30 @@ class LinkDotResolveVisitor final : public VNVisitor {
                 // UINFOTREE(9, nodep, "", "dot-rho");
             }
             if (!m_ds.m_unresolvedClass) {
+                if (m_ds.m_dotErr) {
+                    const LinkDotTakeCallArgsVisitor actuals{nodep};
+                    m_ds.m_lintArgsp = AstNode::addNextNull(m_ds.m_lintArgsp, actuals.operandsp());
+                }
                 if (start) {
                     AstNode* newp;
+                    AstStmtExpr* retainedp = nullptr;
                     if (m_ds.m_dotErr) {
-                        // Marked, so the later passes know this value is a stand-in
-                        // for a name that did not resolve
-                        newp = new AstConst{nodep->fileline(), AstConst::BitFalseErroring{}};
+                        AstNodeExpr* const valuep
+                            = new AstConst{nodep->fileline(), AstConst::BitFalseErroring{}};
+                        retainedp
+                            = LinkDotLint::newOperands(nodep->fileline(), m_ds.m_lintArgsp, false);
+                        m_ds.m_lintArgsp = nullptr;
+                        // Keep actuals in the exact expression scope, including
+                        // automatic locals and generated loop iteration values.
+                        newp = retainedp ? static_cast<AstNode*>(new AstExprStmt{
+                                               nodep->fileline(), retainedp, valuep})
+                                         : valuep;
                     } else {
                         newp = nodep->rhsp()->unlinkFrBack();
                     }
                     UINFOTREE(9, newp, "", "dot-out");
                     nodep->replaceWith(newp);
+                    if (retainedp) symIterateNull(retainedp, m_curSymp);
                     VL_DO_DANGLING(pushDeletep(nodep), nodep);
                 } else {  // Dot midpoint
                     AstNode* newp = nodep->rhsp()->unlinkFrBack();
@@ -4632,6 +4721,7 @@ class LinkDotResolveVisitor final : public VNVisitor {
                         refp->classOrPackagep(foundp->classOrPackagep());
                         newp = refp;
                     }
+                    newp->unresolved(nodep->unresolved());
                     UINFO(9, indent() << "new " << newp);
                     nodep->replaceWith(newp);
                     VL_DO_DANGLING(pushDeletep(nodep), nodep);
@@ -6610,45 +6700,214 @@ void V3LinkDot::linkDotScope(AstNetlist* nodep) {
 // node is exactly a hole this file knows about.
 
 void V3LinkDot::markUnresolved(AstNode* nodep) {
-    // A reference that is part of the write target has lost that target, so the
-    // whole assignment, not just the reference, is what has to go.  The walk
-    // passes through any node to reach the assignment, because a write target can
-    // be a concatenation or an index expression and not only a select, member
-    // selection or dotted reference; the child pointer is what says whether the
-    // reference was under the left side.
+    // A write or event target cannot be replaced by a constant. Remove its
+    // operation instead, including when the hole is in a select or concatenation.
     AstNode* targetp = nodep;
     AstNode* childp = nodep;
     for (AstNode* backp = nodep->backp(); backp; childp = backp, backp = backp->backp()) {
+        // backp() may be a previous sibling, not a parent. Skip the entire
+        // sibling chain before deciding which operand of the parent contains us.
+        while (backp && backp->nextp() == childp) {
+            childp = backp;
+            backp = backp->backp();
+        }
+        if (!backp) break;
+        if (VN_IS(backp, PreInc) || VN_IS(backp, PostInc) || VN_IS(backp, PreDec)
+            || VN_IS(backp, PostDec)) {
+            targetp = backp;
+            break;
+        }
         if (AstNodeAssign* const assignp = VN_CAST(backp, NodeAssign)) {
             if (assignp->lhsp() == childp) targetp = assignp;
             break;
         }
+        if (AstRelease* const releasep = VN_CAST(backp, Release)) {
+            if (releasep->lhsp() == childp) targetp = releasep;
+            break;
+        }
+        if (AstDeassign* const deassignp = VN_CAST(backp, Deassign)) {
+            if (deassignp->lhsp() == childp) targetp = deassignp;
+            break;
+        }
+        if (AstFireEvent* const firep = VN_CAST(backp, FireEvent)) {
+            if (firep->operandp() == childp) targetp = firep;
+            break;
+        }
     }
+    nodep->unresolved(true);
     targetp->unresolved(true);
 }
 
 class LinkDotRepairVisitor final : public VNVisitor {
     // MEMBERS
     int m_unrepairable = 0;  // Marked nodes that cannot be replaced or removed
+    AstNode* m_scopep = nullptr;  // Nearest ordinary statement-list scope
+    AstNode* m_anchorp = nullptr;  // Owning statement or declaration, never an expression
+    AstNode* m_declAnchorp = nullptr;  // Property/sequence bodies have restricted item kinds
+    bool m_inWith = false;  // Lambda operands must remain under their binding AstWith
 
     // METHODS
     static bool isMarked(const AstNode* nodep) { return nodep->unresolved(); }
+    void retainStatement(AstNode* stmtp) {
+        if (m_anchorp) {
+            m_anchorp->addNextHere(stmtp);
+        } else if (AstBegin* const beginp = VN_CAST(m_scopep, Begin)) {
+            beginp->addStmtsp(stmtp);
+        } else if (AstNodeFTask* const taskp = VN_CAST(m_scopep, NodeFTask)) {
+            taskp->addStmtsp(stmtp);
+        } else if (AstNodeModule* const modp = VN_CAST(m_scopep, NodeModule)) {
+            modp->addStmtsp(stmtp);
+        } else {
+            // Parameter sizing can already have moved a type to global scope.
+            // Its operands are linked; retain them without an executable owner.
+            v3Global.rootp()->dollarUnitPkgp()->addStmtsp(stmtp);
+        }
+        iterateChildren(stmtp);
+    }
     void replaceWithFalse(AstNode* nodep) {
         AstNodeExpr* const newp = new AstConst{nodep->fileline(), AstConst::BitFalseErroring{}};
         nodep->replaceWith(newp);
         VL_DO_DANGLING(pushDeletep(nodep), nodep);
     }
-
-    // VISITORS
-    void visit(AstNodeAssign* nodep) override {
+    void repairTarget(AstNode* nodep) {
+        VL_RESTORER(m_anchorp);
+        m_anchorp = m_declAnchorp ? m_declAnchorp : nodep;
         if (!isMarked(nodep)) {
             iterateChildren(nodep);
             return;
         }
-        // Its write target did not resolve, so there is nothing to assign to
-        UINFO(2, "  Removing assignment whose target did not resolve: " << nodep);
-        VL_DO_DANGLING(pushDeletep(nodep->unlinkFrBack()), nodep);
+        if (AstNodeAssign* const assignp = VN_CAST(nodep, NodeAssign)) {
+            // The destination is invalid, not the independently checkable RHS.
+            AstStmtExpr* const stmtp = LinkDotLint::newOperands(
+                nodep->fileline(), assignp->rhsp()->unlinkFrBack(), true);
+            nodep->replaceWith(stmtp);
+            m_anchorp = m_declAnchorp ? m_declAnchorp : stmtp;
+            // A failed target may itself contain calls with useful actuals.
+            iterateAndNextNull(assignp->lhsp());
+            VL_DO_DANGLING(pushDeletep(nodep), nodep);
+            iterateChildren(stmtp);
+        } else {
+            // No writable variable or event remains for this operation to target.
+            UINFO(2, "  Removing operation whose target did not resolve: " << nodep);
+            VL_DO_DANGLING(pushDeletep(nodep->unlinkFrBack()), nodep);
+        }
     }
+
+    void repairIncrement(AstNodeUniop* nodep) {
+        if (!isMarked(nodep)) {
+            iterateChildren(nodep);
+            return;
+        }
+        const LinkDotTakeCallArgsVisitor actuals{nodep->lhsp()};
+        AstStmtExpr* const operandsp
+            = LinkDotLint::newOperands(nodep->fileline(), actuals.operandsp(), false);
+        if (operandsp && !m_inWith) retainStatement(operandsp);
+        iterateChildren(nodep);
+        if (operandsp && m_inWith) {
+            // Just like a missing function, an invalid increment cannot move
+            // item-bound actuals outside their lambda binding.
+            AstNodeExpr* const valuep
+                = new AstConst{nodep->fileline(), AstConst::BitFalseErroring{}};
+            AstExprStmt* const replacementp
+                = new AstExprStmt{valuep->fileline(), operandsp, valuep};
+            nodep->replaceWith(replacementp);
+            VL_DO_DANGLING(pushDeletep(nodep), nodep);
+            iterateChildren(operandsp);
+        } else {
+            replaceWithFalse(nodep);
+        }
+    }
+
+    // VISITORS
+    void visit(AstNodeModule* nodep) override {
+        VL_RESTORER(m_scopep);
+        VL_RESTORER(m_anchorp);
+        VL_RESTORER(m_declAnchorp);
+        m_scopep = nodep;
+        m_anchorp = nullptr;
+        m_declAnchorp = nullptr;
+        iterateChildren(nodep);
+    }
+    void visit(AstNodeFTask* nodep) override {
+        VL_RESTORER(m_scopep);
+        VL_RESTORER(m_anchorp);
+        VL_RESTORER(m_declAnchorp);
+        if (VN_IS(nodep, Property) || VN_IS(nodep, Sequence)) {
+            m_declAnchorp = m_anchorp = nodep;
+        } else {
+            m_scopep = nodep;
+            m_anchorp = nullptr;
+            m_declAnchorp = nullptr;
+        }
+        iterateChildren(nodep);
+    }
+    void visit(AstBegin* nodep) override {
+        VL_RESTORER(m_scopep);
+        VL_RESTORER(m_anchorp);
+        m_scopep = nodep;
+        m_anchorp = m_declAnchorp;
+        iterateChildren(nodep);
+    }
+    void visit(AstNodeStmt* nodep) override {
+        VL_RESTORER(m_anchorp);
+        m_anchorp = m_declAnchorp ? m_declAnchorp : nodep;
+        iterateChildren(nodep);
+    }
+    void visit(AstVar* nodep) override {
+        VL_RESTORER(m_anchorp);
+        m_anchorp = m_declAnchorp ? m_declAnchorp : nodep;
+        if (!m_declAnchorp) {
+            if (const AstNodeFTask* const taskp = VN_CAST(nodep->firstAbovep(), NodeFTask)) {
+                // The return variable is a singular child, not a declaration list.
+                if (taskp->fvarp() == nodep) m_anchorp = nullptr;
+            }
+        }
+        iterateChildren(nodep);
+    }
+    void visit(AstTypedef* nodep) override {
+        VL_RESTORER(m_anchorp);
+        m_anchorp = m_declAnchorp ? m_declAnchorp : nodep;
+        iterateChildren(nodep);
+    }
+    void visit(AstCell* nodep) override {
+        VL_RESTORER(m_anchorp);
+        m_anchorp = nodep;
+        iterateChildren(nodep);
+    }
+    void visit(AstWith* nodep) override {
+        VL_RESTORER(m_inWith);
+        m_inWith = true;
+        iterateChildren(nodep);
+    }
+    void visit(AstExprStmt* nodep) override {
+        for (AstNode *stmtp = nodep->stmtsp(), *nextp; stmtp; stmtp = nextp) {
+            nextp = stmtp->nextp();
+            if (AstStmtExpr* const exprp = VN_CAST(stmtp, StmtExpr)) {
+                if (const AstSysIgnore* const ignorep = VN_CAST(exprp->exprp(), SysIgnore)) {
+                    if (ignorep->lintOnly()) {
+                        if (m_inWith) {
+                            nodep->fileline(nodep->resultp()->fileline());
+                        } else {
+                            retainStatement(stmtp->unlinkFrBack());
+                        }
+                    }
+                }
+            }
+        }
+        iterateChildren(nodep);
+        if (!nodep->stmtsp()) {
+            nodep->replaceWith(nodep->resultp()->unlinkFrBack());
+            VL_DO_DANGLING(pushDeletep(nodep), nodep);
+        }
+    }
+    void visit(AstPreInc* nodep) override { repairIncrement(nodep); }
+    void visit(AstPostInc* nodep) override { repairIncrement(nodep); }
+    void visit(AstPreDec* nodep) override { repairIncrement(nodep); }
+    void visit(AstPostDec* nodep) override { repairIncrement(nodep); }
+    void visit(AstNodeAssign* nodep) override { repairTarget(nodep); }
+    void visit(AstRelease* nodep) override { repairTarget(nodep); }
+    void visit(AstDeassign* nodep) override { repairTarget(nodep); }
+    void visit(AstFireEvent* nodep) override { repairTarget(nodep); }
     void visit(AstParseRef* nodep) override {
         if (!isMarked(nodep)) {
             iterateChildren(nodep);
@@ -6672,22 +6931,38 @@ class LinkDotRepairVisitor final : public VNVisitor {
             iterateChildren(nodep);
             return;
         }
-        // A call in statement position gives no value, so the statement it is
-        // the whole of is dropped; a call used as an expression needs a value
-        if (AstStmtExpr* const stmtp = VN_CAST(nodep->backp(), StmtExpr)) {
-            if (stmtp->exprp() == nodep) {
-                VL_DO_DANGLING(pushDeletep(stmtp->unlinkFrBack()), stmtp);
-                return;
+        AstStmtExpr* const operandsp
+            = LinkDotLint::newOperands(nodep->fileline(), LinkDotLint::takeArgs(nodep), false);
+        if (VN_IS(nodep, TaskRef)) {
+            VL_RESTORER(m_anchorp);
+            AstNode* ownerp = nodep;
+            if (AstStmtExpr* const stmtp = VN_CAST(nodep->firstAbovep(), StmtExpr)) ownerp = stmtp;
+            if (operandsp) {
+                ownerp->replaceWith(operandsp);
+                m_anchorp = m_declAnchorp ? m_declAnchorp : operandsp;
+                VL_DO_DANGLING(pushDeletep(ownerp), ownerp);
+                iterateChildren(operandsp);
+            } else {
+                VL_DO_DANGLING(pushDeletep(ownerp->unlinkFrBack()), ownerp);
             }
-        } else if (VN_IS(nodep, TaskRef)) {
-            VL_DO_DANGLING(pushDeletep(nodep->unlinkFrBack()), nodep);
             return;
         }
-        replaceWithFalse(nodep);
+        if (operandsp && m_inWith) {
+            AstNodeExpr* const valuep
+                = new AstConst{nodep->fileline(), AstConst::BitFalseErroring{}};
+            AstExprStmt* const replacementp
+                = new AstExprStmt{valuep->fileline(), operandsp, valuep};
+            nodep->replaceWith(replacementp);
+            VL_DO_DANGLING(pushDeletep(nodep), nodep);
+            iterateChildren(operandsp);
+        } else {
+            if (operandsp) retainStatement(operandsp);
+            replaceWithFalse(nodep);
+        }
     }
     void visit(AstNode* nodep) override {
-        // Only a reference, or the assignment holding one as its write target, is
-        // ever marked, so anything else marked means the mark was placed wrongly
+        // Only a reference or its write/event target operation is ever marked,
+        // so anything else marked means the mark was placed wrongly
         if (isMarked(nodep)) {
             ++m_unrepairable;
             UINFO(2, "  Unrepairable marked node: " << nodep);
@@ -6700,6 +6975,38 @@ public:
     ~LinkDotRepairVisitor() override = default;
     int unrepairable() const { return m_unrepairable; }
 };
+
+class LinkDotRemoveIgnoredVisitor final : public VNVisitor {
+    void visit(AstStmtExpr* nodep) override {
+        if (VN_IS(nodep->exprp(), SysIgnore)) {
+            VL_DO_DANGLING(pushDeletep(nodep->unlinkFrBack()), nodep);
+            return;
+        }
+        iterateChildren(nodep);
+        if (!nodep->exprp() || VN_IS(nodep->exprp(), Const)) {
+            VL_DO_DANGLING(pushDeletep(nodep->unlinkFrBack()), nodep);
+        }
+    }
+    void visit(AstSysIgnore* nodep) override {
+        VL_DO_DANGLING(pushDeletep(nodep->unlinkFrBack()), nodep);
+    }
+    void visit(AstExprStmt* nodep) override {
+        iterateChildren(nodep);
+        if (!nodep->stmtsp()) {
+            nodep->replaceWith(nodep->resultp()->unlinkFrBack());
+            VL_DO_DANGLING(pushDeletep(nodep), nodep);
+        }
+    }
+    void visit(AstNode* nodep) override { iterateChildren(nodep); }
+
+public:
+    explicit LinkDotRemoveIgnoredVisitor(AstNetlist* nodep) { iterate(nodep); }
+};
+
+void V3LinkDot::removeIgnored(AstNetlist* nodep) {
+    const LinkDotRemoveIgnoredVisitor visitor{nodep};
+    if (v3Global.opt.debugCheck()) v3Global.checkTree();
+}
 
 void V3LinkDot::repairUnresolved(AstNetlist* nodep) {
     // Only a run that is going to continue needs a traversable tree; a run that

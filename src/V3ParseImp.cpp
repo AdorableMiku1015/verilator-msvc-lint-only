@@ -50,6 +50,73 @@ VL_DEFINE_DEBUG_FUNCTIONS;
 V3ParseImp* V3ParseImp::s_parsep = nullptr;
 
 //######################################################################
+// Source-file transaction
+//
+// Parsing appends headers before their bodies are complete. Reject a damaged
+// input by ownership (list suffixes), not by FileLine, which includes can change.
+// Other inputs and persistent preprocessor definitions remain untouched.
+
+class ParseFileCheckpoint final {
+    AstNetlist* const m_rootp;
+    AstNode* const m_modulesTailp;
+    AstNode* const m_miscTailp;
+    AstPackage* const m_unitp;
+    AstNode* const m_unitTailp;
+    AstPackage* const m_stdp;
+    AstClass* const m_stdProcessp;
+    const VTimescale m_timeunit;
+    const VTimescale m_timeprecision;
+    const bool m_timescaleSpecified;
+    const V3Global::ParseState m_features;
+
+    static AstNode* tailp(AstNode* nodep) { return nodep ? nodep->lastp() : nullptr; }
+    static AstNode* suffixp(AstNode* tailp, AstNode* headp) {
+        return tailp ? tailp->nextp() : headp;
+    }
+    static void removeSuffix(AstNode* nodep) {
+        if (nodep) VL_DO_DANGLING(nodep->unlinkFrBackWithNext()->deleteTree(), nodep);
+    }
+
+public:
+    explicit ParseFileCheckpoint(AstNetlist* rootp)
+        : m_rootp{rootp}
+        , m_modulesTailp{tailp(rootp->modulesp())}
+        , m_miscTailp{tailp(rootp->miscsp())}
+        , m_unitp{rootp->dollarUnitPkgp()}
+        , m_unitTailp{tailp(m_unitp ? m_unitp->stmtsp() : nullptr)}
+        , m_stdp{rootp->stdPackagep()}
+        , m_stdProcessp{rootp->stdPackageProcessp()}
+        , m_timeunit{rootp->timeunit()}
+        , m_timeprecision{rootp->timeprecision()}
+        , m_timescaleSpecified{rootp->timescaleSpecified()}
+        , m_features{v3Global.parseState()} {}
+
+    void rollback() const {
+        AstNode* const modulesp = suffixp(m_modulesTailp, m_rootp->modulesp());
+        // Record identities outside the AST. A failed header must neither be
+        // selected as a top nor shadow a later valid replacement definition.
+        for (AstNode* nodep = modulesp; nodep; nodep = nodep->nextp()) {
+            if (VN_IS(nodep, Module) || VN_IS(nodep, Iface) || VN_IS(nodep, Primitive)) {
+                const AstNodeModule* const modp = VN_AS(nodep, NodeModule);
+                v3Global.noteQuarantinedModule(modp->name(), modp->libname(), modp->fileline());
+            }
+        }
+        // Restore aliases before deleting the additions they may point into.
+        m_rootp->dollarUnitPkgp(m_unitp);
+        m_rootp->stdPackagep(m_stdp);
+        m_rootp->stdPackageProcessp(m_stdProcessp);
+        if (m_unitp) removeSuffix(suffixp(m_unitTailp, m_unitp->stmtsp()));
+        removeSuffix(suffixp(m_miscTailp, m_rootp->miscsp()));
+        removeSuffix(modulesp);
+        m_rootp->timeunit(m_timeunit);
+        m_rootp->timeprecision(m_timeprecision);
+        m_rootp->timescaleSpecified(m_timescaleSpecified);
+        v3Global.parseState(m_features);
+        v3Global.noteQuarantinedSource();
+    }
+};
+
+//######################################################################
 // Parser constructor
 
 V3ParseImp::~V3ParseImp() {
@@ -388,8 +455,16 @@ void V3ParseImp::parseFile(
     m_inLibMap = inLibMap;
     m_libname = libname;
 
+    m_canRecoverSyntax = false;
+    m_syntaxError = false;
+    m_sourceQuarantined = false;
+    // Preprocessor failures can leave conditional/include state damaged. They
+    // remain strict; only an ordinary SV parser failure has a rollback contract.
+    const int unrecoverableBefore = V3Error::errorCount() - V3Error::recoverableErrorCount();
     // Preprocess into m_ppBuffer
     const bool ok = V3PreShell::preproc(fileline, modfilename, m_filterp, this, errmsg);
+    const bool preprocessClean
+        = V3Error::errorCount() - V3Error::recoverableErrorCount() <= unrecoverableBefore;
     if (!ok) {
         if (errmsg != "") return;  // Threw error already
         // Create fake node for later error reporting
@@ -399,7 +474,19 @@ void V3ParseImp::parseFile(
         return;
     }
 
+    // Control files have non-AST side effects and cannot use source rollback.
+    m_canRecoverSyntax = preprocessClean && !inLibMap
+                         && !VString::endsWith(VString::downcase(modfilename), ".vlt");
+    for (const string& buffer : m_ppBuffers) {
+        if (buffer.find("`verilator_config") != string::npos) m_canRecoverSyntax = false;
+    }
     parsePreprocessed(modfilename, nondirname);
+    m_canRecoverSyntax = false;
+    if (m_sourceQuarantined && !notFoundName.empty()) {
+        // A lazy input may fail before producing any header. Cache its requested
+        // identity without making a phantom root or hiding a real definition.
+        v3Global.noteQuarantinedModule(notFoundName, libname, m_bisonLastFileline);
+    }
 }
 
 void V3ParseImp::parseText(FileLine* fileline, const string& text, const string& modfilename) {
@@ -415,6 +502,9 @@ void V3ParseImp::parseText(FileLine* fileline, const string& text, const string&
     m_inLibrary = false;
     m_inLibMap = false;
     m_libname = "work";
+    m_canRecoverSyntax = false;
+    m_syntaxError = false;
+    m_sourceQuarantined = false;
 
     V3PreShell::preprocText(fileline, text, this);
 
@@ -523,16 +613,53 @@ void V3ParseImp::dumpTokensAhead(int line) {  // LCOV_EXCL_START
     }
 }  // LCOV_EXCL_STOP
 
+void V3ParseImp::syntaxError(const char* messagep) {
+    m_syntaxError = true;
+    if (m_canRecoverSyntax) {
+        bisonLastFileline()->v3errorRecoverable(messagep);
+    } else {
+        bisonLastFileline()->v3error(messagep);
+    }
+}
+
 void V3ParseImp::lexFile(const string& modname) {
     // Prepare for lexing
     UINFO(3, "Lexing " << modname);
     s_parsep = this;
+    const ParseFileCheckpoint checkpoint{m_rootp};
+    const VTimescale timeLastUnit = m_timeLastUnit;
+    const VTimescale timeLastPrec = m_timeLastPrec;
+    const VOptionBool unconnectedDrive = m_unconnectedDrive;
     lexFileline()->warnResetDefault();  // Reenable warnings on each file
     lexDestroy();  // Restart from clean slate.
     lexNew();
 
-    // Lex it
-    if (bisonParse()) v3fatal("Cannot continue\n");
+    const int status = bisonParse();
+    // Status 2 is resource exhaustion, not an ordinary rejected source file.
+    if (status == 2 || (!m_canRecoverSyntax && status)) v3fatal("Cannot continue\n");
+    if (!m_canRecoverSyntax || (!m_syntaxError && !status)) return;
+    UASSERT_OBJ(m_syntaxError, m_rootp, "Parser failed without reporting a syntax error");
+
+    // Detach all parser aliases before deleting this file's appended AST. Bison
+    // may return success after error recovery, so the explicit marker matters.
+    m_tagNodep = nullptr;
+    m_tokenLastBison = V3ParseBisonYYSType{};
+    m_tokensAhead.clear();
+    parserReset();
+    lexDestroy();
+    checkpoint.rollback();
+    m_sourceQuarantined = true;
+    m_ppBuffers.clear();
+    m_ppBytes = 0;
+    m_lexPrevToken = 0;
+    m_afterColonColon = false;
+    m_lexString.clear();
+    m_lexLintState.clear();
+    m_lexKwdDepth = 0;
+    m_lexKwdLast = stateVerilogRecent();
+    m_timeLastUnit = timeLastUnit;
+    m_timeLastPrec = timeLastPrec;
+    m_unconnectedDrive = unconnectedDrive;
 }
 
 void V3ParseImp::tokenPull() {

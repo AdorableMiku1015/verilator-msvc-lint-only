@@ -69,6 +69,8 @@ public:
     }
 
     // METHODS
+    // Clear aliases before the caller removes a failed input's AST additions.
+    void reset() VL_MT_DISABLED;
     AstArg* argWrapList(AstNodeExpr* nodep) VL_MT_DISABLED;
     bool allTracingOn(const FileLine* fl) const {
         return v3Global.opt.trace() && m_tracingParse && fl->tracingOn();

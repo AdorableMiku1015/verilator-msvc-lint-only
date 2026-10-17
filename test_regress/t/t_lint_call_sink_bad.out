@@ -1,0 +1,25 @@
+%Error: t/t_lint_call_sink_bad.v:16:21: Can't find definition of variable: 'absent_first'
+   16 |   int field = known(absent_first);
+      |                     ^~~~~~~~~~~~
+        ... See the manual at https://verilator.org/verilator_doc.html?v=latest for more assistance.
+%Error: t/t_lint_call_sink_bad.v:19:21: Can't find definition of variable: 'absent_second'
+   19 |   int field = known(absent_second);
+      |                     ^~~~~~~~~~~~~
+%Warning-WIDTHTRUNC: t/t_lint_call_sink_bad.v:34:17: Operator ASSIGNW expects 2 bits on the Assign RHS, but Assign RHS's VARREF 'data' generates 7 bits.
+                                                   : ... note: In instance 't'
+   34 |   assign narrow = data;
+      |                 ^
+                     ... For warning description see https://verilator.org/warn/WIDTHTRUNC?v=latest
+                     ... Use "/* verilator lint_off WIDTHTRUNC */" and lint_on around source to disable this message.
+%Warning-CASEINCOMPLETE: t/t_lint_call_sink_bad.v:36:5: Case values incompletely covered (example pattern 0x1)
+   36 |     case (a)
+      |     ^~~~
+                         ... For warning description see https://verilator.org/warn/CASEINCOMPLETE?v=latest
+                         ... Use "/* verilator lint_off CASEINCOMPLETE */" and lint_on around source to disable this message.
+%Warning-LATCH: t/t_lint_call_sink_bad.v:35:3: Latch inferred for signal 'b' (not all control paths of combinational always assign a value)
+                                             : ... Suggest use of always_latch for intentional latches
+   35 |   always_comb begin
+      |   ^~~~~~~~~~~
+                ... For warning description see https://verilator.org/warn/LATCH?v=latest
+                ... Use "/* verilator lint_off LATCH */" and lint_on around source to disable this message.
+%Error: Exiting due to

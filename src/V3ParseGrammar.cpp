@@ -31,8 +31,10 @@ VL_DEFINE_DEBUG_FUNCTIONS;
 // V3ParseImp functions requiring bison state
 
 int V3ParseImp::bisonParse() {
-    // Use --debugi-bison 9 to enable this
-    if (PARSEP->debugBison() >= 9) yydebug = 1;
+    // Use --debugi-bison 9 to enable this. Bison's counters are process globals,
+    // so a prior input must not affect the status of this call.
+    yydebug = PARSEP->debugBison() >= 9;
+    yynerrs = 0;
     return yyparse();
 }
 
@@ -81,8 +83,51 @@ void V3ParseImp::parserClear() {
     GRAMMARP->setScopedSigAttr(nullptr);
 }
 
+void V3ParseImp::parserReset() {
+    // Bison semantic values may alias nodes the caller is about to remove.
+    // Do not run semantic-value destructors: grammar reductions transfer and
+    // alias those nodes, rather than giving every value independent ownership.
+    yylval = V3ParseBisonYYSType{};
+    GRAMMARP->reset();
+}
+
 //======================================================================
 // V3ParseGrammar functions requiring bison state
+
+void V3ParseGrammar::reset() {
+    // These are aliases into the parsed tree or Bison's discarded values, not
+    // independently owned scratch. Clear them before releasing any templates.
+    m_varAttrp = nullptr;
+    m_gateRangep = nullptr;
+    m_caseAttrp = nullptr;
+
+    setDType(nullptr);
+    setNetDelay(nullptr);
+    setScopedSigAttr(nullptr);
+    if (m_memDTypep) {
+        UASSERT_OBJ(!m_memDTypep->backp(), m_memDTypep, "Should not link member type directly");
+        VL_DO_CLEAR(m_memDTypep->deleteTree(), m_memDTypep = nullptr);
+    }
+    if (m_netStrengthp) {
+        UASSERT_OBJ(!m_netStrengthp->backp(), m_netStrengthp,
+                    "Should not link net strength directly");
+        VL_DO_CLEAR(m_netStrengthp->deleteTree(), m_netStrengthp = nullptr);
+    }
+    if (m_instParamp) {
+        UASSERT_OBJ(!m_instParamp->backp(), m_instParamp,
+                    "Should not link instance parameters directly");
+        VL_DO_CLEAR(m_instParamp->deleteTree(), m_instParamp = nullptr);
+    }
+    if (m_modportProtoTasksp) {
+        UASSERT_OBJ(!m_modportProtoTasksp->backp(), m_modportProtoTasksp,
+                    "Should not link modport prototypes directly");
+        VL_DO_CLEAR(m_modportProtoTasksp->deleteTree(), m_modportProtoTasksp = nullptr);
+    }
+
+    // Restore every per-input mode and pin stack to its declared default. The
+    // process-wide implicit type counter remains monotonic across input files.
+    *this = V3ParseGrammar{};
+}
 
 AstArg* V3ParseGrammar::argWrapList(AstNodeExpr* nodep) {
     // Convert list of expressions to list of arguments

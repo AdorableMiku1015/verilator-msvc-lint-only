@@ -1,0 +1,3 @@
+%Error-PROTECTED: t/t_lint_promoted_bad.v:14:17: A '`pragma protected data_block' encrypted section was detected and will be skipped.
+                  ... For error description see https://verilator.org/warn/PROTECTED?v=latest
+%Error: Exiting due to

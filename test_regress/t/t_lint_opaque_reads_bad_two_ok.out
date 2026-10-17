@@ -1,0 +1,29 @@
+%Warning-MULTIDRIVEN: t/t_lint_opaque_reads_bad.v:41:15: Variable written to in always_comb also written by other process (IEEE 1800-2023 9.2.2.2): 'x'
+                                                       : ... note: In instance 't'
+                      t/t_lint_opaque_reads_bad.v:41:15: 
+   41 |   always_comb x = ~data;
+      |               ^
+                      t/t_lint_opaque_reads_bad.v:26:15: ... Location of other write
+   26 |   always_comb x = data;
+      |               ^
+                      ... For warning description see https://verilator.org/warn/MULTIDRIVEN?v=latest
+                      ... Use "/* verilator lint_off MULTIDRIVEN */" and lint_on around source to disable this message.
+%Warning-CASEINCOMPLETE: t/t_lint_opaque_reads_bad.v:49:5: Case values incompletely covered (example pattern 0x1)
+   49 |     case (a)
+      |     ^~~~
+                         ... For warning description see https://verilator.org/warn/CASEINCOMPLETE?v=latest
+                         ... Use "/* verilator lint_off CASEINCOMPLETE */" and lint_on around source to disable this message.
+%Warning-LATCH: t/t_lint_opaque_reads_bad.v:48:3: Latch inferred for signal 'b' (not all control paths of combinational always assign a value)
+                                                : ... Suggest use of always_latch for intentional latches
+   48 |   always_comb begin
+      |   ^~~~~~~~~~~
+                ... For warning description see https://verilator.org/warn/LATCH?v=latest
+                ... Use "/* verilator lint_off LATCH */" and lint_on around source to disable this message.
+%Warning-MULTIDRIVEN: t/t_lint_opaque_reads_bad.v:15:15: Bits [6:0] of signal 't.x' have multiple combinational drivers. This can cause performance degradation.
+                      t/t_lint_opaque_reads_bad.v:26:17: ... Location of offending driver
+   26 |   always_comb x = data;
+      |                 ^
+                      t/t_lint_opaque_reads_bad.v:41:17: ... Location of offending driver
+   41 |   always_comb x = ~data;
+      |                 ^
+%Error: Exiting due to

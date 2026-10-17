@@ -41,6 +41,10 @@ module t (
 `ifdef TEST_STUB
   damaged u_replacement ();
 `endif
+`ifdef TEST_STAGED
+  logic staged_b;
+  staged_good u_staged (.a(a), .b(staged_b));
+`endif
 endmodule
 
 // Same check for the include and `line fixtures; a declaration that leaked out
@@ -48,3 +52,8 @@ endmodule
 // diagnostics above keep stable line numbers in the goldens.
 typedef logic inc_rolled_back_t;
 typedef logic line_rolled_back_t;
+`ifdef TEST_STAGED
+// This declaration comes after the failed input's last complete design unit,
+// so it must have been rolled back with the rest of the damaged suffix.
+typedef logic staged_rolled_back_t;
+`endif

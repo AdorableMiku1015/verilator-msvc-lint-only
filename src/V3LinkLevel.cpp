@@ -53,7 +53,9 @@ void V3LinkLevel::modSortByLevel() {
         }
         mods.push_back(nodep);
     }
-    if (tops.size() >= 2) {
+    // A quarantined input leaves an incomplete set of tops, so several surviving
+    // roots are a cascade of that error rather than an independent diagnostic.
+    if (tops.size() >= 2 && !v3Global.quarantinedSources()) {
         const AstNode* const secp = tops[1];  // Complain about second one, as first often intended
         if (!secp->fileline()->warnIsOff(V3ErrorCode::MULTITOP)) {
             auto warnTopModules = [](const AstNode* const secp, ModVec tops)

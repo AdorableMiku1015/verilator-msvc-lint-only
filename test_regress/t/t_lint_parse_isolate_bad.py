@@ -16,8 +16,8 @@ bad = 't/t_lint_parse_isolate_bad.v'
 good = 't/t_lint_parse_isolate_good.sv'
 
 for mode in ('before', 'after', 'rec', 'ansi', 'prop', 'inst', 'udp', 'param', 'inc', 'line',
-             'incmissing', 'all', 'pp', 'ppnext', 'top', 'lib', 'stub', 'package', 'function',
-             'class'):
+             'incmissing', 'staged', 'all', 'pp', 'ppnext', 'top', 'lib', 'stub', 'package',
+             'function', 'class'):
     files = [prior, bad, good]
     flags = ['--error-limit', '0']
     defines = []
@@ -43,6 +43,10 @@ for mode in ('before', 'after', 'rec', 'ansi', 'prop', 'inst', 'udp', 'param', '
         # A `line directive must not let the input escape its own transaction,
         # so it uses its own file rather than a branch of the shared bad file.
         files = [prior, 't/t_lint_parse_isolate_line.sv', good]
+    elif mode == 'staged':
+        # A complete design unit before the damage is retained and still linted.
+        files = [prior, 't/t_lint_parse_isolate_staged.sv', good]
+        defines = ['+define+TEST_STAGED']
     elif mode in ('udp', 'param', 'inc', 'incmissing'):
         defines = ['+define+TEST_' + mode.upper()]
     elif mode == 'lib':
@@ -59,7 +63,8 @@ for mode in ('before', 'after', 'rec', 'ansi', 'prop', 'inst', 'udp', 'param', '
         flags += ['--top-module', 'damaged']
     elif mode not in ('all', 'pp', 'ppnext', 'package', 'function', 'class'):
         flags += ['--top-module', 't']
-    if mode not in ('after', 'all', 'pp', 'ppnext', 'line', 'lib', 'package', 'function', 'class'):
+    if mode not in ('after', 'all', 'pp', 'ppnext', 'line', 'staged', 'lib', 'package', 'function',
+                    'class'):
         defines += ['+define+TEST_REQUIRE_BAD_MACRO']
     test.lint(top_filename=files[0],
               v_other_filenames=files[1:],
@@ -85,6 +90,9 @@ for mode in ('before', 'after', 'rec', 'ansi', 'prop', 'inst', 'udp', 'param', '
                            r'Cannot continue|Define or directive not defined|Can.t find typedef')
     if mode == 'stub':
         test.file_grep(log, r'%Warning-WIDTHTRUNC: t/t_lint_parse_isolate_stub.sv:')
+    if mode == 'staged':
+        # The unit completed before the syntax error is linted in this run.
+        test.file_grep(log, r'%Warning-WIDTHTRUNC: t/t_lint_parse_isolate_staged\.sv:')
     if mode == 'inc':
         # The included file belongs to the failed input, so none of its
         # declarations may survive or produce diagnostics.

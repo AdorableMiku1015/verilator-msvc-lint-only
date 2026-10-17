@@ -1037,14 +1037,14 @@ descriptionList:                // IEEE: part of source_text
         ;
 
 description:                    // ==IEEE: description
-                module_declaration                      { }
+                module_declaration                      { PARSEP->commitUnit(); }
         //                      // udp_declaration moved into module_declaration
         //                      // library_declaration and include_statement moved from library_description
         |       library_declaration                     { PARSEP->rootp()->addMiscsp($1); }
         |       include_statement                       { }
-        |       interface_declaration                   { }
-        |       program_declaration                     { }
-        |       package_declaration                     { }
+        |       interface_declaration                   { PARSEP->commitUnit(); }
+        |       program_declaration                     { PARSEP->commitUnit(); }
+        |       package_declaration                     { PARSEP->commitUnit(); }
         |       package_itemTop                         { if ($1) PARSEP->unitPackage($1->fileline())->addStmtsp($1); }
         |       bind_directive                          { if ($1) PARSEP->unitPackage($1->fileline())->addStmtsp($1); }
         |       config_declaration                      { }

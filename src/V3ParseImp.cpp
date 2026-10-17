@@ -119,6 +119,14 @@ public:
 //######################################################################
 // Parser constructor
 
+V3ParseImp::V3ParseImp(AstNetlist* rootp, VInFilter* filterp)
+    : m_rootp{rootp}
+    , m_filterp{filterp} {
+    m_lexKwdLast = stateVerilogRecent();
+    m_timeLastUnit = v3Global.opt.timeDefaultUnit();
+    m_timeLastPrec = v3Global.opt.timeDefaultPrec();
+}
+
 V3ParseImp::~V3ParseImp() {
     for (auto& itr : m_stringps) VL_DO_DANGLING(delete itr, itr);
     m_stringps.clear();
@@ -639,11 +647,20 @@ void V3ParseImp::lexError(FileLine* flp, const char* messagep) {
     }
 }
 
+void V3ParseImp::commitUnit() {
+    // A design unit that finished before any syntax error is independent of the
+    // damaged remainder, so make its state the rollback target. The snapshot
+    // also covers $unit declarations the unit may reference; declarations after
+    // the last completed unit stay part of the rejected suffix.
+    if (!m_canRecoverSyntax || m_syntaxError || !m_checkpoint) return;
+    m_checkpoint = std::make_unique<ParseFileCheckpoint>(m_rootp);
+}
+
 void V3ParseImp::lexFile(const string& modname) {
     // Prepare for lexing
     UINFO(3, "Lexing " << modname);
     s_parsep = this;
-    const ParseFileCheckpoint checkpoint{m_rootp};
+    m_checkpoint = std::make_unique<ParseFileCheckpoint>(m_rootp);
     const VTimescale timeLastUnit = m_timeLastUnit;
     const VTimescale timeLastPrec = m_timeLastPrec;
     const VOptionBool unconnectedDrive = m_unconnectedDrive;
@@ -654,7 +671,10 @@ void V3ParseImp::lexFile(const string& modname) {
     const int status = bisonParse();
     // Status 2 is resource exhaustion, not an ordinary rejected source file.
     if (status == 2 || (!m_canRecoverSyntax && status)) v3fatal("Cannot continue\n");
-    if (!m_canRecoverSyntax || (!m_syntaxError && !status)) return;
+    if (!m_canRecoverSyntax || (!m_syntaxError && !status)) {
+        m_checkpoint.reset();
+        return;
+    }
     UASSERT_OBJ(m_syntaxError, m_rootp, "Parser failed without reporting a syntax error");
 
     // Detach all parser aliases before deleting this file's appended AST. Bison
@@ -664,7 +684,8 @@ void V3ParseImp::lexFile(const string& modname) {
     m_tokensAhead.clear();
     parserReset();
     lexDestroy();
-    checkpoint.rollback();
+    m_checkpoint->rollback();
+    m_checkpoint.reset();
     m_sourceQuarantined = true;
     m_ppBuffers.clear();
     m_ppBytes = 0;

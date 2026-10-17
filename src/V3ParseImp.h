@@ -28,8 +28,10 @@
 
 #include <algorithm>
 #include <deque>
+#include <memory>
 
 class V3Lexer;
+class ParseFileCheckpoint;
 
 // IMPORTANT: Don't include this file other than in the bison and flex,
 // as it's definitions will confuse other parsers
@@ -160,6 +162,9 @@ class V3ParseImp final {
     bool m_canRecoverSyntax = false;  // External source has an AST rollback checkpoint
     bool m_syntaxError = false;  // Bison reported an error, including accepted recovery
     bool m_sourceQuarantined = false;  // This input was rolled back after a syntax error
+    // Tree state after the last design unit this input completed; the rollback
+    // target, so units parsed before the damage are kept
+    std::unique_ptr<ParseFileCheckpoint> m_checkpoint;
 
     bool m_inLibrary = false;  // Currently reading a library vs. regular file
     bool m_inLibMap = false;  // Currently reading a libmap file
@@ -277,6 +282,8 @@ public:
     void syntaxError(const char* messagep) VL_MT_DISABLED;
     // A lexer-level error from damaged source; recovered by dropping the input
     void lexError(FileLine* flp, const char* messagep) VL_MT_DISABLED;
+    // Called from the grammar after a complete design unit
+    void commitUnit() VL_MT_DISABLED;
 
     // Return next token, for bison, since bison isn't class based, use a global THIS
     AstNetlist* rootp() const { return m_rootp; }
@@ -300,13 +307,7 @@ public:
     AstPackage* unitPackage(FileLine* /*fl*/) { return parsep()->rootp()->dollarUnitPkgp(); }
 
     // CONSTRUCTORS
-    V3ParseImp(AstNetlist* rootp, VInFilter* filterp)
-        : m_rootp{rootp}
-        , m_filterp{filterp} {
-        m_lexKwdLast = stateVerilogRecent();
-        m_timeLastUnit = v3Global.opt.timeDefaultUnit();
-        m_timeLastPrec = v3Global.opt.timeDefaultPrec();
-    }
+    V3ParseImp(AstNetlist* rootp, VInFilter* filterp);
     ~V3ParseImp() VL_MT_DISABLED;
     void parserClear() VL_MT_DISABLED;
     void parserReset() VL_MT_DISABLED;

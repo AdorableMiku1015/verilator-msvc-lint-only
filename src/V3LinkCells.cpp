@@ -565,7 +565,12 @@ class LinkCellsVisitor final : public VNVisitor {
             if (AstPackage* const pkgp = VN_CAST(modp, Package)) nodep->packagep(pkgp);
             // If not found, V3LinkDot will report errors
             if (!nodep->packagep()) {
-                nodep->v3error("Import package not found: " << nodep->prettyPkgNameQ());
+                nodep->v3errorRecoverable("Import package not found: "
+                                          << nodep->prettyPkgNameQ());
+                // Drop the import: unqualified names it would have provided are
+                // then reported as unresolved references, which the link repairs,
+                // so independent late checks still run.
+                VL_DO_DANGLING(pushDeletep(nodep->unlinkFrBack()), nodep);
                 return;
             }
         }

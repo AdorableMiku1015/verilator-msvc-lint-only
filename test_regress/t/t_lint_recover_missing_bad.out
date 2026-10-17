@@ -1,0 +1,26 @@
+%Error: t/t_lint_recover_missing_bad.v:12:10: Import package not found: 'nopkg'
+   12 |   import nopkg::*;
+      |          ^~~~~
+        ... See the manual at https://verilator.org/verilator_doc.html?v=latest for more assistance.
+%Error: t/t_lint_recover_missing_bad.v:14:3: Can't find typedef/interface: 'missing_type_t'
+   14 |   missing_type_t typed_missing;
+      |   ^~~~~~~~~~~~~~
+%Error: t/t_lint_recover_missing_bad.v:15:3: Can't find typedef/interface: 'missing_iface'
+   15 |   missing_iface iface_missing;
+      |   ^~~~~~~~~~~~~
+%Warning-ALWCOMBORDER: t/t_lint_recover_missing_bad.v:20:12: always_comb reads 'c' before assigning it later in the same block; behavior may imply latch/state-like behavior and is not purely combinational
+                                                           : ... note: In instance 't'
+                       t/t_lint_recover_missing_bad.v:20:9: ... Location of earlier read
+   20 |     if (c) c = 1'b1;
+      |         ^
+   20 |     if (c) c = 1'b1;
+      |            ^
+                       ... For warning description see https://verilator.org/warn/ALWCOMBORDER?v=latest
+                       ... Use "/* verilator lint_off ALWCOMBORDER */" and lint_on around source to disable this message.
+%Warning-LATCH: t/t_lint_recover_missing_bad.v:19:3: Latch inferred for signal 't.c' (not all control paths of combinational always assign a value)
+                                                   : ... Suggest use of always_latch for intentional latches
+   19 |   always_comb begin
+      |   ^~~~~~~~~~~
+                ... For warning description see https://verilator.org/warn/LATCH?v=latest
+                ... Use "/* verilator lint_off LATCH */" and lint_on around source to disable this message.
+%Error: Exiting due to

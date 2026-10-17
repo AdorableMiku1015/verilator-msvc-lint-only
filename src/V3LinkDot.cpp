@@ -6424,7 +6424,15 @@ class LinkDotResolveVisitor final : public VNVisitor {
                                        << nodep->prettyNameQ()
                                        << ", found: " << foundp->nodep()->prettyTypeName());
                     } else {
-                        nodep->v3error("Can't find typedef/interface: " << nodep->prettyNameQ());
+                        nodep->v3errorRecoverable(
+                            "Can't find typedef/interface: " << nodep->prettyNameQ());
+                        // Keep the tree traversable so unrelated late checks still
+                        // run: stand in a plain logic type, marked as recovered so
+                        // later passes do not build diagnostics on the placeholder.
+                        FileLine* const flp = new FileLine{nodep->fileline()};
+                        flp->erroringOn(true);
+                        nodep->fileline(flp);
+                        nodep->refDTypep(nodep->findLogicDType(1, 1, VSigning::UNSIGNED));
                     }
                 }
             }

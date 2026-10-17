@@ -2954,6 +2954,16 @@ class WidthVisitor final : public VNVisitor {
     void visit(AstCastDynamic* nodep) override {
         nodep->dtypeChgWidthSigned(32, 1, VSigning::SIGNED);  // Spec says integer return
         userIterateChildren(nodep, WidthVP{SELF, BOTH}.p());
+        if (nodep->top()->fileline()->erroringOn()) {
+            // The destination name did not resolve and became a recovery
+            // constant; the name error is already reported, so do not classify
+            // the cast against that placeholder.
+            AstConst* const newp = new AstConst{nodep->fileline(), AstConst::Signed32{}, 0};
+            nodep->replaceWithKeepDType(newp);
+            VL_DO_DANGLING(pushDeletep(nodep), nodep);
+            userIterate(newp, m_vup);
+            return;
+        }
         AstNodeDType* const toDtp = nodep->top()->dtypep()->skipRefToEnump();
         AstNodeDType* const fromDtp = nodep->fromp()->dtypep()->skipRefToEnump();
         FileLine* const fl = nodep->fileline();
@@ -7188,6 +7198,14 @@ class WidthVisitor final : public VNVisitor {
         assertAtStatement(nodep);
         iterateCheckString(nodep, "filename", nodep->filenamep(), BOTH);
         userIterateAndNext(nodep->memp(), WidthVP{SELF, BOTH}.p());
+        if (nodep->memp()->fileline()->erroringOn()) {
+            // The memory name did not resolve and became a recovery constant;
+            // the name error is already reported, so do not add array-shape
+            // cascades against the placeholder.
+            userIterateAndNext(nodep->lsbp(), WidthVP{SELF, BOTH}.p());
+            userIterateAndNext(nodep->msbp(), WidthVP{SELF, BOTH}.p());
+            return;
+        }
         const AstNodeDType* subp = nullptr;
         if (const AstAssocArrayDType* adtypep
             = VN_CAST(nodep->memp()->dtypep()->skipRefp(), AssocArrayDType)) {

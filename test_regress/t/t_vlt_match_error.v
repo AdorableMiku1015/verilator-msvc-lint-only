@@ -16,7 +16,10 @@ module DECLFILENAME;
 `ifdef T_VLT_MATCH_ERROR_1
   import hi::*;
 `elsif T_VLT_MATCH_ERROR_2
-  initial $readmemh("", EC_ERROR);
+  // A declared scalar keeps this a genuine unsupported-array error; an
+  // unresolved name would be a recovery constant instead.
+  logic [7:0] not_mem;
+  initial $readmemh("", not_mem);
 `elsif T_VLT_MATCH_ERROR_3
   initial #1;
 `endif

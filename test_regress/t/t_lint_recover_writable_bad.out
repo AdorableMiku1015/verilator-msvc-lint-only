@@ -1,0 +1,27 @@
+%Error: t/t_lint_recover_writable_bad.v:20:24: Signal definition not found, and implicit disabled with `default_nettype: 'absent_pin'
+   20 |   sub u_sub (.a(a), .b(absent_pin));
+      |                        ^~~~~~~~~~
+        ... See the manual at https://verilator.org/verilator_doc.html?v=latest for more assistance.
+%Error: t/t_lint_recover_writable_bad.v:23:56: Can't find definition of variable: 'mem_missing'
+   23 |     $readmemh("t/t_lint_recover_writable_missing.hex", mem_missing);
+      |                                                        ^~~~~~~~~~~
+%Error: t/t_lint_recover_writable_bad.v:24:11: Can't find definition of variable: 'dst_missing'
+                                             : ... Suggested alternative: 'mem_missing'
+   24 |     $cast(dst_missing, src);
+      |           ^~~~~~~~~~~
+%Warning-ALWCOMBORDER: t/t_lint_recover_writable_bad.v:28:12: always_comb reads 'c' before assigning it later in the same block; behavior may imply latch/state-like behavior and is not purely combinational
+                                                            : ... note: In instance 't'
+                       t/t_lint_recover_writable_bad.v:28:9: ... Location of earlier read
+   28 |     if (c) c = 1'b1;
+      |         ^
+   28 |     if (c) c = 1'b1;
+      |            ^
+                       ... For warning description see https://verilator.org/warn/ALWCOMBORDER?v=latest
+                       ... Use "/* verilator lint_off ALWCOMBORDER */" and lint_on around source to disable this message.
+%Warning-LATCH: t/t_lint_recover_writable_bad.v:27:3: Latch inferred for signal 't.c' (not all control paths of combinational always assign a value)
+                                                    : ... Suggest use of always_latch for intentional latches
+   27 |   always_comb begin
+      |   ^~~~~~~~~~~
+                ... For warning description see https://verilator.org/warn/LATCH?v=latest
+                ... Use "/* verilator lint_off LATCH */" and lint_on around source to disable this message.
+%Error: Exiting due to

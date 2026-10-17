@@ -1,10 +1,6 @@
-%Error: t/t_vlt_match_error.v:19:25: Can't find definition of variable: 'EC_ERROR'
-   19 |   initial $readmemh("", EC_ERROR);
-      |                         ^~~~~~~~
-        ... See the manual at https://verilator.org/verilator_doc.html?v=latest for more assistance.
-%Error-UNSUPPORTED: t/t_vlt_match_error.v:19:25: Unsupported: $readmemh into other than unpacked or associative array
+%Error-UNSUPPORTED: t/t_vlt_match_error.v:22:25: Unsupported: $readmemh into other than unpacked or associative array
                                                : ... note: In instance 'DECLFILENAME'
-   19 |   initial $readmemh("", EC_ERROR);
-      |                         ^~~~~~~~
+   22 |   initial $readmemh("", not_mem);
+      |                         ^~~~~~~
                     ... For error description see https://verilator.org/warn/UNSUPPORTED?v=latest
 %Error: Exiting due to

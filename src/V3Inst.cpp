@@ -320,6 +320,13 @@ AstAssignW* V3Inst::pinReconnectSimple(AstPin* pinp, AstCell* cellp, bool forTri
 
 void V3Inst::checkOutputShort(const AstPin* nodep) {
     if (nodep->modVarp()->direction() == VDirection::OUTPUT) {
+        if (nodep->exprp() && nodep->exprp()->fileline()->erroringOn()) {
+            // The actual was an unresolved name that became a recovery constant.
+            // Drop the unusable connection without an electrical-short cascade;
+            // the original name error already makes this run fail.
+            nodep->exprp()->unlinkFrBack()->deleteTree();
+            return;
+        }
         if (VN_IS(nodep->exprp(), Const) || VN_IS(nodep->exprp(), Extend)
             || (VN_IS(nodep->exprp(), Concat)
                 && (VN_IS(VN_AS(nodep->exprp(), Concat)->lhsp(), Const)))) {

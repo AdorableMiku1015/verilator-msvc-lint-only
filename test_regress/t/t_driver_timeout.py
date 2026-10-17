@@ -11,6 +11,9 @@ import vltest_bootstrap
 
 test.scenarios('dist')
 
+if os.name == 'nt':
+    test.skip("The timeout CPU limit needs a POSIX system")
+
 test.passes()
 
 test.timeout(1)

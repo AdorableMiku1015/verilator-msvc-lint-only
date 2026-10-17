@@ -1051,9 +1051,9 @@ vnum    {vnum1}|{vnum2}|{vnum3}|{vnum4}|{vnum5}
 
   /************************************************************************/
   /* STRINGS */
-<STRING><<EOF>>         { FL; yylval.fl->v3error("EOF in unterminated string");
+<STRING><<EOF>>         { FL; PARSEP->lexError(yylval.fl, "EOF in unterminated string");
                           yyleng = 0; yy_pop_state(); FL_BRK; yyterminate(); }
-<STRING>{crnl}          { FL; yylval.fl->v3error("Unterminated string");
+<STRING>{crnl}          { FL; PARSEP->lexError(yylval.fl, "Unterminated string");
                           FL_BRK; }
 <STRING>\\{crnl}        { PARSEP->lexFileline()->linenoInc(); }  /* IEEE 1800-2023 5.9: backslash-newline continuation is ignored */
 <STRING>\\.             { PARSEP->lexString().append(yytext, yyleng); }
@@ -1068,7 +1068,7 @@ vnum    {vnum1}|{vnum2}|{vnum3}|{vnum4}|{vnum5}
 
   /************************************************************************/
   /* """ */
-<QQQ><<EOF>>            { FL; yylval.fl->v3error("EOF in unterminated \"\"\" string");
+<QQQ><<EOF>>            { FL; PARSEP->lexError(yylval.fl, "EOF in unterminated \"\"\" string");
                           yyleng = 0; yy_pop_state(); FL_BRK; yyterminate(); }
 <QQQ>\\{crnl}           { PARSEP->lexFileline()->linenoInc(); }  /* IEEE 1800-2023 5.9: backslash-newline continuation is ignored */
 <QQQ>\\.                { PARSEP->lexString().append(yytext, yyleng); }
@@ -1089,7 +1089,7 @@ vnum    {vnum1}|{vnum2}|{vnum3}|{vnum4}|{vnum5}
 <ATTRMODE>"*)"          { FL_FWD; yy_pop_state(); FL_BRK; }
 <ATTRMODE>{word}        { yymore(); }
 <ATTRMODE>.             { yymore(); }
-<ATTRMODE><<EOF>>       { FL; yylval.fl->v3error("EOF in (*");
+<ATTRMODE><<EOF>>       { FL; PARSEP->lexError(yylval.fl, "EOF in (*");
                           yyleng = 0; yy_pop_state(); FL_BRK; yyterminate(); }
 
   /************************************************************************/
@@ -1110,7 +1110,7 @@ vnum    {vnum1}|{vnum2}|{vnum3}|{vnum4}|{vnum5}
 <TABLE>"`line"{ws}+[^\n\r]*{crnl}       { FL_FWD; PARSEP->lexPpline(yytext); FL_BRK; }
 <TABLE>"//"[^\n]*                       { FL_FWD; FL_BRK; }  /* Throw away single line comments */
 <TABLE>"endtable"                       { FL; yy_pop_state(); return yENDTABLE; }
-<TABLE><<EOF>>                          { FL; yylval.fl->v3error("EOF in 'table'");
+<TABLE><<EOF>>                          { FL; PARSEP->lexError(yylval.fl, "EOF in 'table'");
                                               yyleng = 0; yy_pop_state(); FL_BRK; yyterminate(); }
 
 <EDGEDESC>{

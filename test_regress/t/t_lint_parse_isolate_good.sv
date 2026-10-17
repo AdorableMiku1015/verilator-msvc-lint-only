@@ -42,3 +42,9 @@ module t (
   damaged u_replacement ();
 `endif
 endmodule
+
+// Same check for the include and `line fixtures; a declaration that leaked out
+// of the failed input would be a duplicate here. Kept after the module so the
+// diagnostics above keep stable line numbers in the goldens.
+typedef logic inc_rolled_back_t;
+typedef logic line_rolled_back_t;

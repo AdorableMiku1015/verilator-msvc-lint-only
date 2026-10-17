@@ -628,6 +628,17 @@ void V3ParseImp::syntaxError(const char* messagep) {
     }
 }
 
+void V3ParseImp::lexError(FileLine* flp, const char* messagep) {
+    // A lexical fragment that reaches EOF is damage confined to this input,
+    // which the parser transaction removes as a whole.
+    m_syntaxError = true;
+    if (m_canRecoverSyntax) {
+        flp->v3errorRecoverable(messagep);
+    } else {
+        flp->v3error(messagep);
+    }
+}
+
 void V3ParseImp::lexFile(const string& modname) {
     // Prepare for lexing
     UINFO(3, "Lexing " << modname);

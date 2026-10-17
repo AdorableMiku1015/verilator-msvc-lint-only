@@ -275,6 +275,8 @@ public:
     // Only use this if do not have and cannot get a token-relevant fileline
     FileLine* bisonLastFileline() const { return m_bisonLastFileline; }
     void syntaxError(const char* messagep) VL_MT_DISABLED;
+    // A lexer-level error from damaged source; recovered by dropping the input
+    void lexError(FileLine* flp, const char* messagep) VL_MT_DISABLED;
 
     // Return next token, for bison, since bison isn't class based, use a global THIS
     AstNetlist* rootp() const { return m_rootp; }

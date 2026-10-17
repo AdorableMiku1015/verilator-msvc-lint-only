@@ -27,6 +27,21 @@ module damaged;
 `elsif TEST_INSTANCE
 module damaged;
   unavailable_ip #(.WIDTH(7)) u_ip (.a(
+`elsif TEST_UDP
+primitive damaged_udp (output o, input a);
+  table
+    0 : 1;
+`elsif TEST_PARAM
+module damaged #(parameter WIDTH = 7, parameter DEPTH =
+`elsif TEST_INC
+`include "t/t_lint_parse_isolate_inc.vh"
+module damaged;
+  assign = ;
+endmodule
+`elsif TEST_INCMISSING
+`include "t/t_lint_parse_isolate_missing.vh"
+module damaged;
+endmodule
 `else
 module damaged;
   initial begin

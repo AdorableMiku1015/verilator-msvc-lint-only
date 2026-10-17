@@ -1,0 +1,16 @@
+%Error: t/t_lint_parse_isolate_bad.v:42:10: Cannot find include file: 't/t_lint_parse_isolate_missing.vh'
+   42 | `include "t/t_lint_parse_isolate_missing.vh"
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        ... See the manual at https://verilator.org/verilator_doc.html?v=latest for more assistance.
+        ... Looked in:
+             t/t/t_lint_parse_isolate_missing.vh
+             t/t/t_lint_parse_isolate_missing.vh.v
+             t/t/t_lint_parse_isolate_missing.vh.sv
+             t/t_lint_parse_isolate_missing.vh
+             t/t_lint_parse_isolate_missing.vh.v
+             t/t_lint_parse_isolate_missing.vh.sv
+             obj_vlt/t_lint_parse_isolate_bad/t/t_lint_parse_isolate_missing.vh
+             obj_vlt/t_lint_parse_isolate_bad/t/t_lint_parse_isolate_missing.vh.v
+             obj_vlt/t_lint_parse_isolate_bad/t/t_lint_parse_isolate_missing.vh.sv
+        ... With current working directory '...'
+%Error: Exiting due to

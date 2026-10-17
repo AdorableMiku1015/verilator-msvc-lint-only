@@ -675,6 +675,21 @@ void V3PreLex::initFirstBuffer(FileLine* filelinep) {
     yyrestart(nullptr);
 }
 
+void V3PreLex::resetScratch() {
+    // Per-input token scratch only; defines live in the preprocessor and the
+    // stream stack is back to its initial EOF entry between inputs.
+    m_lexLintState.clear();
+    m_formalLevel = 0;
+    m_parenLevel = 0;
+    m_defCmtSlash = false;
+    m_defQuote = false;
+    m_defValue.clear();
+    m_enterExit = 0;
+    m_protLength = 0;
+    m_protBytes = 0;
+    m_encType = Enctype{};
+}
+
 void V3PreLex::scanNewFile(FileLine* filelinep) {
     // Called on new open file.  scanBytesBack will be called next.
     if (streamDepth() > V3PreProc::DEFINE_RECURSION_LEVEL_MAX) {

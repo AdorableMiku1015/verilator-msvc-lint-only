@@ -15,8 +15,8 @@ prior = 't/t_lint_parse_isolate_prior.sv'
 bad = 't/t_lint_parse_isolate_bad.v'
 good = 't/t_lint_parse_isolate_good.sv'
 
-for mode in ('before', 'after', 'rec', 'ansi', 'prop', 'inst', 'all', 'pp', 'top', 'lib', 'stub',
-             'package', 'function', 'class'):
+for mode in ('before', 'after', 'rec', 'ansi', 'prop', 'inst', 'all', 'pp', 'ppnext', 'top', 'lib',
+             'stub', 'package', 'function', 'class'):
     files = [prior, bad, good]
     flags = ['--error-limit', '0']
     defines = []
@@ -26,6 +26,10 @@ for mode in ('before', 'after', 'rec', 'ansi', 'prop', 'inst', 'all', 'pp', 'top
         files = [bad]
     elif mode == 'pp':
         files = [prior, 't/t_lint_parse_isolate_pp.sv', good]
+    elif mode == 'ppnext':
+        # The failed conditional in pp.sv must not swallow the next input, so the
+        # following file's own syntax error is still reported.
+        files = [prior, 't/t_lint_parse_isolate_pp.sv', bad, good]
     elif mode == 'rec':
         defines = ['+define+TEST_RECOVER']
     elif mode == 'ansi':
@@ -46,9 +50,9 @@ for mode in ('before', 'after', 'rec', 'ansi', 'prop', 'inst', 'all', 'pp', 'top
         defines = ['+define+TEST_UNIT_' + mode.upper()]
     if mode == 'top':
         flags += ['--top-module', 'damaged']
-    elif mode not in ('all', 'pp', 'package', 'function', 'class'):
+    elif mode not in ('all', 'pp', 'ppnext', 'package', 'function', 'class'):
         flags += ['--top-module', 't']
-    if mode not in ('after', 'all', 'pp', 'lib', 'package', 'function', 'class'):
+    if mode not in ('after', 'all', 'pp', 'ppnext', 'lib', 'package', 'function', 'class'):
         defines += ['+define+TEST_REQUIRE_BAD_MACRO']
     test.lint(top_filename=files[0],
               v_other_filenames=files[1:],
@@ -61,7 +65,7 @@ for mode in ('before', 'after', 'rec', 'ansi', 'prop', 'inst', 'all', 'pp', 'top
         log,
         r'Internal Error|No top level module|Duplicate declaration|%Warning-MULTITOP:|%Error-MODMISSING:'
     )
-    if mode in ('all', 'pp'):
+    if mode in ('all', 'pp', 'ppnext'):
         test.file_grep_not(log, r'%Warning-(WIDTHTRUNC|CASEINCOMPLETE|LATCH):')
     elif mode in ('package', 'function', 'class'):
         test.file_grep(log, r'%Warning-WIDTHTRUNC: t/t_lint_parse_isolate_unit.sv:')
@@ -74,7 +78,14 @@ for mode in ('before', 'after', 'rec', 'ansi', 'prop', 'inst', 'all', 'pp', 'top
                            r'Cannot continue|Define or directive not defined|Can.t find typedef')
     if mode == 'stub':
         test.file_grep(log, r'%Warning-WIDTHTRUNC: t/t_lint_parse_isolate_stub.sv:')
-    if mode != 'pp':
+    if mode == 'ppnext':
+        # Only the damaged input reports the unterminated conditional; the next
+        # input's own syntax error is reported instead of being swallowed.
+        test.file_grep_count(log, r'ifdef not terminated at EOF', 1)
+        test.file_grep(log, r'%Error: t/t_lint_parse_isolate_bad\.v:\d+:\d+: syntax error')
+        test.file_grep_not(log, r'%Error: t/t_lint_parse_isolate_good\.sv')
+        test.file_grep(log, r'Exiting due to (\d+) error\(s\)', 2)
+    elif mode != 'pp':
         test.file_grep(log, r'Exiting due to (\d+) error\(s\)', 1)
 
 test.passes()

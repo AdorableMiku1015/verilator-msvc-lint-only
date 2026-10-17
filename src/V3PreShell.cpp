@@ -138,6 +138,10 @@ protected:
         return true;
     }
 
+    void preprocRecover() {
+        if (s_preprocp) s_preprocp->resetAfterFailure();
+    }
+
     void preprocInclude(FileLine* fl, const string& modname) {
         if (modname[0] == '/' || modname[0] == '\\') {
             fl->v3warn(INCABSPATH,
@@ -191,6 +195,7 @@ bool V3PreShell::preproc(FileLine* fl, const string& modname, VInFilter* filterp
 bool V3PreShell::preprocText(FileLine* fl, const string& text, V3ParseImp* parsep) {
     return V3PreShellImp::s_preImp.preprocText(fl, text, parsep);
 }
+void V3PreShell::preprocRecover() { V3PreShellImp::s_preImp.preprocRecover(); }
 void V3PreShell::preprocInclude(FileLine* fl, const string& modname) {
     V3PreShellImp::s_preImp.preprocInclude(fl, modname);
 }

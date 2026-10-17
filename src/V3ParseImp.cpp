@@ -458,13 +458,19 @@ void V3ParseImp::parseFile(
     m_canRecoverSyntax = false;
     m_syntaxError = false;
     m_sourceQuarantined = false;
-    // Preprocessor failures can leave conditional/include state damaged. They
-    // remain strict; only an ordinary SV parser failure has a rollback contract.
+    // Preprocessor failures remain strict: no quarantine and no continued lint.
+    // Their transient state is discarded so later inputs are independent.
     const int unrecoverableBefore = V3Error::errorCount() - V3Error::recoverableErrorCount();
     // Preprocess into m_ppBuffer
     const bool ok = V3PreShell::preproc(fileline, modfilename, m_filterp, this, errmsg);
     const bool preprocessClean
         = V3Error::errorCount() - V3Error::recoverableErrorCount() <= unrecoverableBefore;
+    if (!preprocessClean) {
+        // A failed preprocess can leave conditionals or directives half applied.
+        // Keep the defines it established, but clear everything else so later
+        // inputs are parsed on their own; this input still fails as before.
+        V3PreShell::preprocRecover();
+    }
     if (!ok) {
         if (errmsg != "") return;  // Threw error already
         // Create fake node for later error reporting

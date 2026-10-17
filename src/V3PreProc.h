@@ -58,6 +58,9 @@ public:
     virtual string getline() = 0;  // Return next line/lines. (Null if done.)
     virtual bool isEof() const = 0;  // Return true on EOF.
     virtual void insertUnreadback(const string& text) = 0;
+    // Discard per-input conditionals, directives and lexer scratch after a failed
+    // preprocess, keeping defines so later inputs still see established macros.
+    virtual void resetAfterFailure() = 0;
 
     FileLine* fileline() VL_MT_DISABLED;  ///< File/Line number for last getline call
 

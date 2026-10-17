@@ -229,6 +229,7 @@ public:  // Used only by V3PreLex.cpp and V3PreProc.cpp
     YY_BUFFER_STATE currentBuffer();
     int lex();
     int currentStartState() const;
+    void resetScratch();
     void dumpSummary();
     void dumpStack();
     void unused();

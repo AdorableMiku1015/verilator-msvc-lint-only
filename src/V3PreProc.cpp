@@ -272,6 +272,7 @@ public:
     void include(const string& filename) override;  // Request a include file be processed
     void undef(const string& name) override;
     virtual void undefineall();
+    void resetAfterFailure() override;
     void define(FileLine* fl, const string& name, const string& value, const string& params,
                 bool cmdline) override;
     string removeDefines(const string& text) override;  // Remove defines in a text string
@@ -322,6 +323,39 @@ void V3PreProcImp::undefineall() {
         ++nextit;
         if (!it->second.cmdline()) m_defines.erase(it);
     }
+}
+void V3PreProcImp::resetAfterFailure() {
+    // A failed preprocess can stop inside a conditional, a directive or an
+    // include, and that state is global to this persistent preprocessor.
+    // Defines are the one intended cross-input effect, so keep them and discard
+    // the rest; otherwise the next input is swallowed by this input's `ifdef.
+    m_lexp->resetScratch();
+    while (!m_states.empty()) m_states.pop();
+    m_states.push(ps_TOP);
+    m_off = 0;
+    m_incError = false;
+    m_lastSym.clear();
+    m_formals.clear();
+    m_lineCmt.clear();
+    m_lineCmtNl = false;
+    m_lineAdd = 0;
+    m_rawAtBol = true;
+    m_finAhead = false;
+    m_finToken = 0;
+    m_finBuf.clear();
+    m_finAtBol = true;
+    m_strify.clear();
+    while (!m_defRefs.empty()) m_defRefs.pop();
+    while (!m_ifdefStack.empty()) m_ifdefStack.pop();
+    m_defDepth = 0;
+    m_defPutJoin = false;
+    while (!m_joinStack.empty()) m_joinStack.pop();
+    m_exprParser.reset(fileline());
+    m_exprParenLevel = 0;
+    m_lineChars.clear();
+    m_lastLineno = 0;
+    m_tokensOnLine = 0;
+    m_tokenBuf.clear();
 }
 bool V3PreProcImp::defExists(const string& name) {
     const auto iter = m_defines.find(name);

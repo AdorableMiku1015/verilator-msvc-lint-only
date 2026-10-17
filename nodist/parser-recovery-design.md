@@ -3,10 +3,12 @@
 
 # Parser recovery design audit
 
-This records the design audit behind the whole-file isolation implementation.
+This records the design audit behind the parser recovery implementation.
 See `lint-recovery-progress.md` for current delivery and verification evidence.
-The finer-grained same-file recovery and full orphan-allocation reclamation
-recommendations below remain unimplemented; do not infer they are delivered.
+The staged same-file recovery recommendations below are now implemented (see the
+follow-up delivery section of that file). Full orphan-allocation reclamation
+remains unimplemented and is a documented bounded-leak compromise; consumer
+closure for rejected declarations is not part of the initial guarantee.
 
 ## Entry points and transaction
 

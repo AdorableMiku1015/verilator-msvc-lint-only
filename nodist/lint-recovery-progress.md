@@ -209,6 +209,9 @@ The original parser audit and longer-term ownership/design-unit guidance are
 preserved in `parser-recovery-design.md`. Whole-file isolation is implemented;
 that document's finer-grained ownership recommendations are not all delivered.
 
+Items 1, 3 and part of 5 below were subsequently implemented in the follow-up
+delivery at the end of this file; the text is kept as the original record.
+
 1. **Parser granularity and ownership.** Whole-file isolation intentionally drops
    healthy units in a damaged input too. Same-file clean-unit salvage needs
    explicit grammar begin/complete/error checkpoints, not regex source splitting.
@@ -246,3 +249,57 @@ that document's finer-grained ownership recommendations are not all delivered.
 
 This bounded patch is prepared for the user's requested local commit. Do not
 change the sync branch or push remotely as part of this work.
+
+## Follow-up delivery: staged recovery and defect closure
+
+After the bounded delivery above, the remaining design items and the defects
+found while reviewing it were implemented and covered by regressions.
+
+- **Staged same-file recovery, both phases.** The transaction now snapshots the
+  tree after each complete design unit. A unit that completed before the first
+  error is kept, including the `$unit` declarations it may use. The unit being
+  parsed when the error is reported is rolled back when bison resynchronizes
+  through the `description: error` production, and units that then parse cleanly
+  are kept again. An input that ends inside a damaged unit drops only the
+  uncommitted tail. MULTITOP is suppressed when an input was quarantined,
+  because several surviving roots are a cascade of the missing unit.
+- **Preprocessor recovery.** An unclean preprocess clears conditionals, directive
+  bookkeeping, include-error state and lexer scratch while keeping defines, so
+  the next input is parsed independently; include recursion is cleared as well.
+- **Parser lexer damage.** Unterminated strings, block comments, attributes and
+  UDP tables are reported through the input transaction instead of stopping the
+  process before later files are checked.
+- **Regression matrix complete.** UDP, parameter list, include, `` `line ``,
+  missing include, include recursion and the staged before/after cases are now
+  covered alongside the original modes.
+- **Writable-target cascades removed.** An unresolved output-pin actual,
+  `$readmemh` memory and `$cast` destination no longer add PORTSHORT or
+  unsupported-array/cast errors; only the original name error remains.
+- **Selector reads retained.** Assignment, inc/dec and release/deassign/event
+  targets that the linker rejects keep their remaining selector expressions as
+  read-only diagnostic operands, so an out-of-range index keeps its independent
+  SELRANGE. A bare recovery index does not report a width warning that only
+  reflects the placeholder's width.
+- **Missing declarations continue.** An unresolved typedef/interface is reported
+  as recoverable and stands in with a plain logic type; a missing package import
+  is dropped so its names are reported as ordinary unresolved references that
+  the link repairs. Unrelated late checks still run.
+
+Verification for this follow-up: full Windows lint suite **1019 passed, 0 failed,
+48 skipped**; distribution checks **23 passed, 0 failed, 4 skipped**; the parser
+isolation driver covers 23 modes; focused recovery drivers all pass.
+
+Remaining, explicitly not claimed:
+
+- **Orphan-allocation reclamation.** Discarded Bison semantic values can still
+  live until process exit. The design permits this as a documented bounded leak
+  for a short-lived lint process; no generic semantic-value `deleteTree`
+  destructor is used because reductions alias and transfer nodes.
+- **Consumer closure beyond per-reference repair.** A declaration rejected as an
+  incomplete unit does not get a symbol-aware quarantine for all of its
+  consumers; those consumers are handled only where the link can repair them.
+- **Poison provenance.** Erroring placeholder constants can still prune
+  `generate`/`if` branches that would otherwise be independently lintable.
+- **Policy matrix breadth.** Suppression, `--error-limit` 0/1/default,
+  `--verilate-jobs 4` and unused/multidriven sentinels beyond the new regressions
+  remain follow-up coverage, not current guarantees.

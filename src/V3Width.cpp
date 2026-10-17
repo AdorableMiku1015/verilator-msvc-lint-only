@@ -1231,7 +1231,9 @@ class WidthVisitor final : public VNVisitor {
             // Retained operands bypass earlier constant passes. Fold a known
             // index before truncating it, or 0+20 would silently become 4.
             if (m_inLintOperand) V3Const::constifyEdit(nodep->lsbp());
-            if (widthBad(nodep->lsbp(), selwidthDTypep) && nodep->lsbp()->width() != 32) {
+            if (widthBad(nodep->lsbp(), selwidthDTypep) && nodep->lsbp()->width() != 32
+                && !nodep->lsbp()->fileline()->erroringOn()) {
+                // A recovered index placeholder has no user width to report on.
                 if (!nodep->fileline()->warnIsOff(V3ErrorCode::WIDTH)) {
                     nodep->v3widthWarn(
                         (selwidth / elw), (nodep->lsbp()->width() / elw),

@@ -6769,6 +6769,22 @@ class LinkDotRepairVisitor final : public VNVisitor {
         nodep->replaceWith(newp);
         VL_DO_DANGLING(pushDeletep(nodep), nodep);
     }
+    void retainTargetReads(AstNode* targetp) {
+        // The holes in an invalid target are already replaced. Any selector or
+        // member expression left in it still has independent range and type
+        // checks, so keep it as a read-only diagnostic operand. Calls are
+        // excluded because their actuals were already moved by the visit.
+        bool hasCall = false;
+        targetp->foreach([&hasCall](const AstNodeFTaskRef*) { hasCall = true; });
+        if (!hasCall) {
+            if (AstStmtExpr* const stmtp
+                = LinkDotLint::newOperands(targetp->fileline(), targetp, true)) {
+                retainStatement(stmtp);
+                return;
+            }
+        }
+        VL_DO_DANGLING(targetp->deleteTree(), targetp);
+    }
     void repairTarget(AstNode* nodep) {
         VL_RESTORER(m_anchorp);
         m_anchorp = m_declAnchorp ? m_declAnchorp : nodep;
@@ -6783,12 +6799,38 @@ class LinkDotRepairVisitor final : public VNVisitor {
             nodep->replaceWith(stmtp);
             m_anchorp = m_declAnchorp ? m_declAnchorp : stmtp;
             // A failed target may itself contain calls with useful actuals.
+            // Replace the holes while the target is still linked, then keep the
+            // remaining selector expressions as read-only operands.
             iterateAndNextNull(assignp->lhsp());
+            if (AstNodeExpr* const lhsp = assignp->lhsp()) {
+                retainTargetReads(lhsp->unlinkFrBack());
+            }
             VL_DO_DANGLING(pushDeletep(nodep), nodep);
             iterateChildren(stmtp);
         } else {
             // No writable variable or event remains for this operation to target.
             UINFO(2, "  Removing operation whose target did not resolve: " << nodep);
+            AstNode* targetp = nullptr;
+            if (AstRelease* const relp = VN_CAST(nodep, Release)) {
+                targetp = relp->lhsp();
+            } else if (AstDeassign* const deap = VN_CAST(nodep, Deassign)) {
+                targetp = deap->lhsp();
+            } else if (AstFireEvent* const firep = VN_CAST(nodep, FireEvent)) {
+                targetp = firep->operandp();
+            }
+            if (targetp) {
+                iterateAndNextNull(targetp);
+                // The visit may have replaced the target node; fetch it again.
+                targetp = nullptr;
+                if (AstRelease* const relp = VN_CAST(nodep, Release)) {
+                    targetp = relp->lhsp();
+                } else if (AstDeassign* const deap = VN_CAST(nodep, Deassign)) {
+                    targetp = deap->lhsp();
+                } else if (AstFireEvent* const firep = VN_CAST(nodep, FireEvent)) {
+                    targetp = firep->operandp();
+                }
+                if (targetp) retainTargetReads(targetp->unlinkFrBack());
+            }
             VL_DO_DANGLING(pushDeletep(nodep->unlinkFrBack()), nodep);
         }
     }
@@ -6802,7 +6844,16 @@ class LinkDotRepairVisitor final : public VNVisitor {
         AstStmtExpr* const operandsp
             = LinkDotLint::newOperands(nodep->fileline(), actuals.operandsp(), false);
         if (operandsp && !m_inWith) retainStatement(operandsp);
+        // Replace the holes in the increment operand while it is still linked,
+        // then keep the selector expressions that still have range/type checks.
         iterateChildren(nodep);
+        if (AstNodeExpr* const targetp = nodep->lhsp()) {
+            if (!m_inWith) {
+                retainTargetReads(targetp->unlinkFrBack());
+            } else {
+                VL_DO_DANGLING(targetp->unlinkFrBack()->deleteTree(), targetp);
+            }
+        }
         if (operandsp && m_inWith) {
             // Just like a missing function, an invalid increment cannot move
             // item-bound actuals outside their lambda binding.

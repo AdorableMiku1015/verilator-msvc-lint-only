@@ -1,0 +1,27 @@
+%Error: t/t_lint_recover_selrange_bad.v:15:10: Can't find definition of variable: 'absent_a'
+   15 |     data[absent_a + 20] = 1'b0;
+      |          ^~~~~~~~
+        ... See the manual at https://verilator.org/verilator_doc.html?v=latest for more assistance.
+%Error: t/t_lint_recover_selrange_bad.v:16:10: Can't find definition of variable: 'absent_b'
+                                             : ... Suggested alternative: 'absent_a'
+   16 |     data[absent_b + 21]++;
+      |          ^~~~~~~~
+%Error: t/t_lint_recover_selrange_bad.v:17:18: Can't find definition of variable: 'absent_c'
+                                             : ... Suggested alternative: 'absent_a'
+   17 |     release data[absent_c + 22];
+      |                  ^~~~~~~~
+%Warning-SELRANGE: t/t_lint_recover_selrange_bad.v:15:9: Selection index out of range: 20:20 outside 7:0
+                                                       : ... note: In instance 't'
+   15 |     data[absent_a + 20] = 1'b0;
+      |         ^
+                   ... For warning description see https://verilator.org/warn/SELRANGE?v=latest
+                   ... Use "/* verilator lint_off SELRANGE */" and lint_on around source to disable this message.
+%Warning-SELRANGE: t/t_lint_recover_selrange_bad.v:16:9: Selection index out of range: 21:21 outside 7:0
+                                                       : ... note: In instance 't'
+   16 |     data[absent_b + 21]++;
+      |         ^
+%Warning-SELRANGE: t/t_lint_recover_selrange_bad.v:17:17: Selection index out of range: 22:22 outside 7:0
+                                                        : ... note: In instance 't'
+   17 |     release data[absent_c + 22];
+      |                 ^
+%Error: Exiting due to
